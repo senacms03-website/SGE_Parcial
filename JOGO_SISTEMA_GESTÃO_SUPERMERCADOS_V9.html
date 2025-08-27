@@ -1,0 +1,3531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle de Estoque - Supermercado</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- JsBarcode library for barcode generation -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <!-- QuaggaJS library for barcode scanning from webcam -->
+    <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        .tab-button.active {
+            background-color: #10B981; /* Emerald 500 */
+            color: white;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e0e0e0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #a0a0a0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #808080;
+        }
+        /* Basic table styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            overflow: hidden; /* Ensures rounded corners apply to content */
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb; /* Gray 200 */
+        }
+        th {
+            background-color: #f9fafb; /* Gray 50 */
+            font-weight: 600;
+            color: #4b5563; /* Gray 700 */
+            text-transform: uppercase;
+            font-size: 0.875rem; /* sm */
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db; /* Gray 300 */
+            border-radius: 0.375rem; /* rounded-md */
+            background-color: #ffffff;
+            font-size: 1rem;
+            color: #374151;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: #10B981; /* Emerald 500 */
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25); /* Emerald 500 with opacity */
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            /* Adicionado para garantir área de clique consistente */
+            min-height: 48px; /* Tamanho comum para alvo de toque */
+            box-sizing: border-box; /* Inclui padding e border na largura/altura total */
+            /* Adicionado para garantir que o botão esteja acima de outros elementos */
+            position: relative;
+            z-index: 100; /* Aumentado para prioridade máxima */
+        }
+        .btn:hover {
+            background-color: #059669; /* Emerald 600 */
+            transform: translateY(-1px);
+            /* Adicionado para depuração visual da área de clique */
+            outline: 3px solid rgba(255, 255, 255, 1); /* Contorno branco sólido e mais visível */
+            outline-offset: 2px; /* Afasta o contorno um pouco do botão */
+        }
+        .btn-primary {
+            background-color: #10B981; /* Emerald 500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #059669; /* Emerald 600 */
+            transform: translateY(-1px);
+        }
+        .btn-secondary {
+            background-color: #6B7280; /* Gray 500 */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #4B5563; /* Gray 600 */
+            transform: translateY(-1px);
+        }
+        .btn-danger {
+            background-color: #EF4444; /* Red 500 */
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #DC2626; /* Red 600 */
+            transform: translateY(-1px);
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        .message-box.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Custom Modal Styles */
+        .custom-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+        }
+        .custom-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .custom-modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            max-width: 90%;
+            width: 400px;
+            text-align: center;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease-out;
+        }
+        .custom-modal-overlay.show .custom-modal-content {
+            transform: translateY(0);
+        }
+        .custom-modal-content h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .custom-modal-content p {
+            margin-bottom: 1.5rem;
+            color: #555;
+        }
+        .custom-modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+        .custom-modal-buttons .btn {
+            min-height: auto; /* Override btn min-height for modal buttons */
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+            z-index: auto; /* Reset z-index for modal buttons */
+        }
+
+        /* Barcode Modal Specific Styles */
+        #barcodeModal .barcode-display {
+            /* Removed font-family, font-size, letter-spacing as they are for text */
+            margin-top: 1rem;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            background-color: #f9f9f9;
+            display: flex; /* Use flexbox to center the SVG */
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Ensure barcode doesn't overflow if too wide */
+            min-height: 120px; /* Give some minimum height for the barcode area */
+        }
+        #barcodeModal .barcode-display svg {
+            max-width: 100%; /* Ensure SVG scales within the container */
+            height: auto;
+        }
+
+        /* Styles for printable barcode labels */
+        .barcode-label-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* Adjust label width as needed */
+            gap: 10px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 1rem;
+        }
+        .barcode-label {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 120px; /* Fixed height for labels */
+        }
+        .barcode-label .supermarket-name {
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        .barcode-label .product-name {
+            font-weight: 500;
+            font-size: 1em;
+            flex-grow: 1; /* Allows name to take available space */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-break: break-word; /* Ensures long names wrap */
+            overflow: hidden; /* Hide overflow if name is too long */
+        }
+        .barcode-label .price {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #10B981;
+            margin-top: 5px;
+        }
+        .barcode-label .barcode-number {
+            font-family: 'monospace';
+            font-size: 0.9em;
+            margin-top: 5px;
+            word-break: break-all;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #barcodePrintArea, #barcodePrintArea * {
+                visibility: visible;
+            }
+            #barcodePrintArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .barcode-label-container {
+                box-shadow: none;
+                border: none;
+                gap: 5px; /* Smaller gap for printing */
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Adjust for print */
+            }
+            .barcode-label {
+                border: 1px solid #000; /* Black border for print */
+                height: 100px; /* Adjust height for print */
+                padding: 5px;
+            }
+        }
+
+        /* Styles for QuaggaJS video and canvas */
+        #interactive.viewport {
+            position: relative;
+            width: 100%;
+            height: 200px; /* Adjust as needed */
+            overflow: hidden;
+            border-radius: 0.5rem;
+            background-color: #000; /* Black background for video */
+        }
+        #interactive.viewport video, #interactive.viewport canvas {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensures video covers the area */
+        }
+        #interactive.viewport .drawingBuffer {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+    <div id="messageBox" class="message-box"></div>
+
+    <header class="bg-gradient-to-r from-emerald-500 to-teal-600 p-4 shadow-md">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
+            <h1 id="systemTitle" class="text-3xl font-bold text-white mb-4 md:mb-0" contenteditable="true" role="textbox" tabindex="0">SISTEMA DE GESTÃO SIMPLES</h1>
+            <nav class="flex flex-wrap justify-center gap-2">
+                <!-- Novas abas para Cadastro e Inventário -->
+                <button class="tab-button btn btn-primary active" data-tab="cadastro-produtos">Cadastro de Produtos</button>
+                <button class="tab-button btn btn-primary" data-tab="controle-estoque">Controle de Estoque</button>
+                <button class="tab-button btn btn-primary" data-tab="inventario-produtos">Inventário de Produtos</button>
+                <button class="tab-button btn btn-primary" data-tab="caixa">Caixa</button>
+                <button class="tab-button btn btn-primary" data-tab="recebimentos">Recebimentos</button>
+                <button class="tab-button btn btn-primary" data-tab="compras">Compras</button>
+                <button class="tab-button btn btn-primary" data-tab="aprovacoes">Aprovações</button>
+                <button class="tab-button btn btn-primary" data-tab="relatorios">Relatórios</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto p-6 bg-white rounded-lg shadow-lg my-6">
+        <!-- Módulo de Cadastro de Produtos (Nova Seção) -->
+        <section id="cadastro-produtos" class="content-section active">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Cadastro e Edição de Produtos</h2>
+            <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 class="text-xl font-medium text-gray-700 mb-4">Formulário de Produto</h3>
+                <form id="productForm" class="space-y-4">
+                    <input type="hidden" id="productId">
+                    <div>
+                        <label for="productName" class="form-label">Nome do Produto:</label>
+                        <input type="text" id="productName" class="form-input" required>
+                    </div>
+                    <div>
+                        <label for="productSKU" class="form-label">SKU:</label>
+                        <input type="text" id="productSKU" class="form-input">
+                    </div>
+                    <div>
+                        <label for="productBarcode" class="form-label">Código de Barras (EAN-13):</label>
+                        <input type="text" id="productBarcode" class="form-input" pattern="[0-9]{13}" title="Código de barras deve ter 13 dígitos numéricos (EAN-13)" maxlength="13">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="productPrice" class="form-label">Preço de Venda (R$):</label>
+                            <input type="number" id="productPrice" class="form-input" step="0.01" min="0" required>
+                        </div>
+                        <div>
+                            <label for="productCostPrice" class="form-label">Preço de Custo (R$):</label>
+                            <input type="number" id="productCostPrice" class="form-input" step="0.01" min="0">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="productQuantity" class="form-label">Quantidade em Estoque:</label>
+                            <input type="number" id="productQuantity" class="form-input" min="0" value="0" required>
+                        </div>
+                        <div>
+                            <label for="productUnit" class="form-label">Unidade de Medida:</label>
+                            <input type="text" id="productUnit" class="form-input" placeholder="Ex: UN, KG, LT">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="productCategory" class="form-label">Local/ Prateleira:</label>
+                        <input type="text" id="productCategory" class="form-input">
+                    </div>
+                    <div>
+                        <label for="productSupplier" class="form-label">Fornecedor:</label>
+                        <input type="text" id="productSupplier" class="form-input">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label for="productNCM" class="form-label">NCM:</label>
+                            <input type="text" id="productNCM" class="form-input">
+                        </div>
+                        <div>
+                            <label for="productCEST" class="form-label">CEST:</label>
+                            <input type="text" id="productCEST" class="form-input">
+                        </div>
+                        <div>
+                            <label for="productCFOP" class="form-label">CFOP:</label>
+                            <input type="text" id="productCFOP" class="form-input">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">Salvar Produto</button>
+                    <button type="button" id="clearProductForm" class="btn btn-secondary w-full mt-2">Limpar Formulário</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Módulo de Controle de Estoque (NOVA SEÇÃO) -->
+        <section id="controle-estoque" class="content-section">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Controle de Estoque</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Estoque Regular -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Estoque Regular (Produtos em Estoque)</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>SKU</th>
+                                    <th>Código de Barras</th>
+                                    <th>Qtd em Estoque</th>
+                                    <th>Unidade</th>
+                                </tr>
+                            </thead>
+                            <tbody id="regularStockList" class="bg-white divide-y divide-gray-200">
+                                <!-- Produtos em estoque serão carregados aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Itens para Chegar -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Itens para Chegar (Pedidos de Compra Aprovados)</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Código de Barras</th>
+                                    <th>Qtd Pendente</th>
+                                    <th>Fornecedor</th>
+                                    <th>Pedido #</th>
+                                    <th>Data do Pedido</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incomingItemsList" class="bg-white divide-y divide-gray-200">
+                                <!-- Itens para chegar serão carregados aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Módulo de Inventário de Produtos (Nova Seção) -->
+        <section id="inventario-produtos" class="content-section">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Inventário de Produtos</h2>
+            <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 class="text-xl font-medium text-gray-700 mb-4">Lista Completa de Itens
+                    <button id="viewAllProductsBtn" class="btn btn-secondary btn-sm ml-4">Visualizar Todos os Produtos</button>
+                </h3>
+                <div class="mb-4">
+                    <input type="text" id="inventorySearch" class="form-input" placeholder="Pesquisar por nome, SKU ou código de barras...">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>SKU</th>
+                                <th>Código de Barras</th>
+                                <th>Preço Venda</th>
+                                <th>Preço Custo</th>
+                                <th>Qtd</th>
+                                <th>Unidade</th>
+                                <th>Local/ Prateleira</th>
+                                <th>Fornecedor</th>
+                                <th>NCM</th>
+                                <th>CEST</th>
+                                <th>CFOP</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryList" class="bg-white divide-y divide-gray-200">
+                            <!-- Produtos serão carregados aqui -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Módulo de Caixa (Checkout) -->
+        <section id="caixa" class="content-section">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Caixa (Checkout)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Adicionar Item ao Carrinho -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Adicionar Item</h3>
+                    <form id="checkoutAddItemForm" class="space-y-4">
+                        <div>
+                            <label for="checkoutProductSearch" class="form-label">Pesquisar Produto (Nome/Código de Barras):</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="checkoutProductSearch" class="form-input flex-grow" placeholder="Digite o nome ou código de barras">
+                                <button type="button" id="openWebcamScannerBtn" class="btn btn-secondary px-4 py-2">
+                                    <i class="fas fa-camera mr-2"></i> Escanear
+                                </button>
+                            </div>
+                            <div id="checkoutProductSuggestions" class="mt-2 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto"></div>
+                        </div>
+                        <div>
+                            <label for="checkoutQuantity" class="form-label">Quantidade:</label>
+                            <input type="number" id="checkoutQuantity" class="form-input" min="1" value="1" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Adicionar ao Carrinho</button>
+                    </form>
+                </div>
+
+                <!-- Carrinho e Finalização da Venda -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Carrinho de Compras</h3>
+                    <div class="overflow-x-auto mb-4">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th>
+                                    <th>Código de Barras</th>
+                                    <th>Qtd</th>
+                                    <th>Preço Unit.</th>
+                                    <th>Total</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="checkoutCartList" class="bg-white divide-y divide-gray-200">
+                                <!-- Itens do carrinho serão carregados aqui -->
+                                <tr><td colspan="6" class="text-center text-gray-500">Nenhum item no carrinho.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-right text-xl font-bold text-gray-800 mb-4">
+                        Total: <span id="checkoutTotal">R$ 0.00</span>
+                    </div>
+                    <form id="checkoutForm" class="space-y-4">
+                        <div>
+                            <label for="paymentMethod" class="form-label">Forma de Pagamento:</label>
+                            <select id="paymentMethod" class="form-select" required>
+                                <option value="">Selecione...</option>
+                                <option value="Dinheiro">Dinheiro</option>
+                                <option value="Cartao_Credito">Cartão de Crédito</option>
+                                <option value="Cartao_Debito">Cartão de Débito</nopt>
+                                <option value="Pix">Pix</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Finalizar Venda</button>
+                        <button type="button" id="clearCart" class="btn btn-danger w-full mt-2">Limpar Carrinho</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Módulo de Recebimentos -->
+        <section id="recebimentos" class="content-section">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Recebimentos de Produtos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Registrar Recebimento -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Registrar Recebimento</h3>
+                    <form id="receiptForm" class="space-y-4">
+                        <div>
+                            <label for="approvedPurchaseOrderSelect" class="form-label">Selecionar Pedido de Compra Aprovado:</label>
+                            <select id="approvedPurchaseOrderSelect" class="form-select" required>
+                                <option value="">Selecione um Pedido de Compra...</option>
+                                <!-- Pedidos de compra aprovados serão carregados aqui -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="receiptProductSelect" class="form-label">Item do Pedido:</label>
+                            <select id="receiptProductSelect" class="form-select" required disabled>
+                                <option value="">Selecione um item do pedido...</option>
+                                <!-- Itens do pedido selecionado serão carregados aqui -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="receiptQuantity" class="form-label">Quantidade Recebida:</label>
+                            <input type="number" id="receiptQuantity" class="form-input" min="1" required>
+                            <p class="text-sm text-gray-500 mt-1" id="expectedQuantityHint"></p>
+                        </div>
+                        <div>
+                            <label for="receiptCost" class="form-label">Custo Unitário (R$):</label>
+                            <input type="number" id="receiptCost" class="form-input" step="0.01" min="0" readonly> <!-- Readonly as it comes from PO -->
+                        </div>
+                        <div>
+                            <label for="receiptInvoiceNumber" class="form-label">Número da Nota Fiscal:</label>
+                            <input type="text" id="receiptInvoiceNumber" class="form-input">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Registrar Recebimento</button>
+                    </form>
+                </div>
+                <!-- Histórico de Recebimentos -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Histórico de Recebimentos</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Produto</th>
+                                    <th>Código de Barras</th>
+                                    <th>Qtd</th>
+                                    <th>Custo Unit.</th>
+                                    <th>NF</th>
+                                    <th>Pedido Compra</th> <!-- Nova coluna -->
+                                </tr>
+                            </thead>
+                            <tbody id="receiptsList" class="bg-white divide-y divide-gray-200">
+                                <!-- Recebimentos serão carregados aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Módulo de Compras -->
+        <section id="compras" class="content-section">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Gestão de Compras</h2>
+            <div class="grid grid-cols-1 gap-6">
+                <!-- Pedido de Compras / Requisição -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Novo Pedido/Requisição de Compra</h3>
+                    <form id="purchaseForm" class="space-y-4">
+                        <input type="hidden" id="purchaseId">
+                        <div>
+                            <label for="purchaseSupplier" class="form-label">Fornecedor:</label>
+                            <input type="text" id="purchaseSupplier" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="purchaseInvoiceNumber" class="form-label">Número da Nota Fiscal (Entrada):</label>
+                            <input type="text" id="purchaseInvoiceNumber" class="form-input">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="purchaseFreightCost" class="form-label">Custo do Frete (R$):</label>
+                                <input type="number" id="purchaseFreightCost" class="form-input" step="0.01" min="0" value="0">
+                            </div>
+                            <div>
+                                <label for="purchaseFreightPaid" class="form-label">Frete:</label>
+                                <select id="purchaseFreightPaid" class="form-select">
+                                    <option value="true">Pago</option>
+                                    <option value="false">A Pagar</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="purchaseStatus" class="form-label">Status:</label>
+                            <select id="purchaseStatus" class="form-select">
+                                <option value="Pendente">Pendente</option>
+                                <option value="Aprovado">Aprovado</option>
+                                <option value="Recebido">Recebido</option>
+                                <option value="Cancelado">Cancelado</option>
+                            </select>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-700 mt-6 mb-2">Itens da Compra:</h4>
+                        <div class="flex flex-col sm:flex-row gap-2 mb-4"> <!-- Alterado para flex-col para melhor layout mobile -->
+                            <input type="text" id="purchaseProductSearch" class="form-input flex-grow" placeholder="Pesquisar produto existente ou digitar nome do novo produto">
+                            <input type="number" id="purchaseProductQuantity" class="form-input w-full sm:w-32" min="1" value="1" placeholder="Qtd">
+                            <input type="number" id="purchaseProductCostPrice" class="form-input w-full sm:w-32" step="0.01" min="0" placeholder="Custo Unit. (Novo)">
+                            <input type="text" id="purchaseProductBarcode" class="form-input w-full sm:w-48" pattern="[0-9]{13}" title="Código de barras deve ter 13 dígitos numéricos (EAN-13)" maxlength="13" placeholder="Código de Barras (Novo)">
+                            <button type="button" id="addPurchaseItem" class="btn btn-secondary w-full sm:w-auto">Adicionar Item</button>
+                        </div>
+                        <div id="purchaseProductSuggestions" class="mt-2 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto"></div>
+
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th>Código de Barras</th>
+                                        <th>Qtd</th>
+                                        <th>Custo Unit.</th>
+                                        <th>Total Item</th>
+                                        <th>Tipo</th> <!-- Nova coluna -->
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="purchaseItemsList" class="bg-white divide-y divide-gray-200">
+                                    <!-- Itens da compra serão adicionados aqui -->
+                                    <tr><td colspan="7" class="text-center text-gray-500">Nenhum item adicionado.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-right text-xl font-bold text-gray-800 mt-4">
+                            Total da Compra: <span id="purchaseTotal">R$ 0.00</span>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-full">Salvar Pedido de Compra</button>
+                        <button type="button" id="clearPurchaseForm" class="btn btn-secondary w-full mt-2">Limpar Formulário</button>
+                    </form>
+                </div>
+
+                <!-- Lista de Pedidos de Compras -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Pedidos de Compras</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Fornecedor</th>
+                                    <th>NF</th>
+                                    <th>Frete</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th>Aprovação</th> <!-- Nova coluna -->
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchasesList" class="bg-white divide-y divide-gray-200">
+                                <!-- Pedidos de compra serão carregados aqui -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Módulo de Aprovações (NOVA SEÇÃO) -->
+        <section id="aprovacoes" class="content-section">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Aprovação de Pedidos de Compra</h2>
+            <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 class="text-xl font-medium text-gray-700 mb-4">Pedidos Pendentes de Aprovação</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Fornecedor</th>
+                                <th>NF</th>
+                                <th>Total</th>
+                                <th>Itens Novos</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingPurchasesList" class="bg-white divide-y divide-gray-200">
+                            <!-- Pedidos pendentes serão carregados aqui -->
+                            <tr><td colspan="6" class="text-center text-gray-500 py-4">Nenhum pedido pendente de aprovação.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Módulo de Relatórios -->
+        <section id="relatorios" class="content-section">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Relatórios Diversos</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Relatório de Estoque -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-start">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Relatório de Estoque</h3>
+                    <p class="text-gray-600 mb-4">Gera um relatório completo dos produtos em estoque.</p>
+                    <button id="exportInventoryCSV" class="btn btn-primary mt-auto">Exportar CSV</button>
+                    <!-- Adicionar botões para TXT, XLS, DOC aqui se implementado -->
+                </div>
+
+                <!-- Relatório de Vendas -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-start">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Relatório de Vendas</h3>
+                    <p class="text-gray-600 mb-4">Gera um relatório das vendas realizadas.</p>
+                    <button id="exportSalesCSV" class="btn btn-primary mt-auto">Exportar CSV</button>
+                </div>
+
+                <!-- Relatório de Recebimentos -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-start">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Relatório de Recebimentos</h3>
+                    <p class="text-gray-600 mb-4">Gera um relatório dos produtos recebidos.</p>
+                    <button id="exportReceiptsCSV" class="btn btn-primary mt-auto">Exportar CSV</button>
+                </div>
+
+                <!-- Relatório de Compras -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-start">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Relatório de Compras</h3>
+                    <p class="text-gray-600 mb-4">Gera um relatório dos pedidos de compra.</p>
+                    <button id="exportPurchasesCSV" class="btn btn-primary mt-auto">Exportar CSV</button>
+                </div>
+
+                <!-- Relatório de Cadastro de Produtos -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-start">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Relatório de Cadastro de Produtos</h3>
+                    <p class="text-gray-600 mb-4">Gera um relatório detalhado de todos os produtos cadastrados.</p>
+                    <button id="exportProductCadastroCSV" class="btn btn-primary mt-auto">Exportar CSV</button>
+                </div>
+
+                 <!-- Relatório de Contagem Cega (NOVO) -->
+                 <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-start">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Relatório de Contagem Cega</h3>
+                    <p class="text-gray-600 mb-4">Gera um relatório para contagem física e confronto de estoque.</p>
+                    <button id="generateBlindCountReportBtn" class="btn btn-primary mt-auto">Gerar Relatório</button>
+                    <button id="exportBlindCountCSV" class="btn btn-secondary mt-2 hidden">Exportar CSV</button>
+                </div>
+
+                <!-- Relatório de Códigos de Barras (NOVO) -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-start">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Relatório de Códigos de Barras</h3>
+                    <p class="text-gray-600 mb-4">Gera etiquetas de código de barras para impressão.</p>
+                    <div class="w-full mt-auto">
+                        <label for="supermarketNameInput" class="form-label">Nome do Supermercado:</label>
+                        <input type="text" id="supermarketNameInput" class="form-input mb-2" placeholder="Ex: Meu Supermercado">
+                        <button id="generateBarcodeLabelsBtn" class="btn btn-primary w-full">Gerar Etiquetas</button>
+                    </div>
+                </div>
+
+                <!-- Exportar e Importar Backup -->
+                <div class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-start">
+                    <h3 class="text-xl font-medium text-gray-700 mb-4">Backup do Sistema</h3>
+                    <p class="text-gray-600 mb-4">Exporta ou importa todos os dados do sistema para backup e restauração.</p>
+                    <div class="flex flex-wrap gap-2 mt-auto">
+                        <button id="exportSystemBackup" class="btn btn-primary">Exportar Backup</button>
+                        <input type="file" id="importSystemFileInput" accept=".json" class="hidden">
+                        <button id="importSystemBackup" class="btn btn-secondary">Importar Backup</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Seção de Resultados do Relatório de Contagem Cega -->
+            <div id="blindCountReportResults" class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 mt-6 hidden">
+                <h3 class="text-xl font-medium text-gray-700 mb-4">Resultados da Contagem Cega</h3>
+                <div class="overflow-x-auto mb-4">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>SKU</th>
+                                <th>Qtd Sistema</th>
+                                <th>Contagem Física</th>
+                                <th>Divergência</th>
+                                <th>% Divergência</th>
+                            </tr>
+                        </thead>
+                        <tbody id="blindCountTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Itens da contagem cega serão carregados aqui -->
+                        </tbody>
+                    </table>
+                </div>
+                <button id="confrontBlindCountBtn" class="btn btn-primary w-full">Confrontar Contagem</button>
+                <button id="resetBlindCountBtn" class="btn btn-secondary w-full mt-2">Reiniciar Contagem</button>
+            </div>
+
+            <!-- Seção de Resultados do Relatório de Códigos de Barras -->
+            <div id="barcodePrintArea" class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200 mt-6 hidden">
+                <h3 class="text-xl font-medium text-gray-700 mb-4">Etiquetas de Código de Barras para Impressão</h3>
+                <div id="barcodeLabelsContainer" class="barcode-label-container">
+                    <!-- Etiquetas de código de barras serão carregadas aqui -->
+                </div>
+                <button id="printBarcodeLabelsBtn" class="btn btn-primary w-full mt-4">Imprimir Etiquetas</button>
+                <button id="closeBarcodeLabelsBtn" class="btn btn-secondary w-full mt-2">Fechar Visualização</button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white p-4 text-center mt-6">
+        <p>&copy; 2025 Prof. Mário - Aulas de Gestão/ Logística/ Processos. Todos os direitos reservados. Proibido a utilização sem prévia autorização.</p>
+    </footer>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="customConfirmModal" class="custom-modal-overlay">
+        <div class="custom-modal-content">
+            <h3 id="customConfirmTitle">Confirmação</h3>
+            <p id="customConfirmMessage">Você tem certeza?</p>
+            <div class="custom-modal-buttons">
+                <button id="customConfirmYes" class="btn btn-primary">Sim</button>
+                <button id="customConfirmNo" class="btn btn-secondary">Não</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barcode Display Modal -->
+    <div id="barcodeModal" class="custom-modal-overlay">
+        <div class="custom-modal-content">
+            <h3 class="barcode-product-name"></h3>
+            <p class="barcode-product-price"></p>
+            <div class="barcode-display">
+                <svg id="barcodeSvg"></svg> <!-- SVG element for JsBarcode to render into -->
+            </div>
+            <button id="closeBarcodeModalBtn" class="btn btn-primary mt-4">Fechar</button>
+        </div>
+    </div>
+
+    <!-- Webcam Barcode Scanner Modal -->
+    <div id="webcamScannerModal" class="custom-modal-overlay">
+        <div class="custom-modal-content max-w-xl">
+            <h3 class="text-xl font-medium text-gray-700 mb-4">Escanear Código de Barras com Webcam</h3>
+            <div id="interactive" class="viewport">
+                <video class="w-full h-auto rounded-md shadow-md" autoplay="true" preload="auto" playsinline></video>
+                <canvas class="drawingBuffer"></canvas>
+            </div>
+            <p class="text-sm text-gray-600 mt-2" id="scannerMessage">Aguardando câmera...</p>
+            <div class="custom-modal-buttons mt-4">
+                <button id="stopWebcamScannerBtn" class="btn btn-danger">Parar Escaneamento</button>
+                <button id="closeWebcamScannerModalBtn" class="btn btn-secondary">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis globais para o IndexedDB
+        let db;
+        const DB_NAME = 'supermarketDB';
+        const DB_VERSION = 1; // Mantenha a versão para não disparar onupgradeneeded se já rodou
+
+        // --- Funções de Utilitário ---
+
+        /**
+         * Exibe uma mensagem temporária na tela.
+         * @param {string} message - A mensagem a ser exibida.
+         * @param {string} type - Tipo da mensagem (e.g., 'success', 'error'). Não usado para estilo neste exemplo, mas útil para futuras expansões.
+         */
+        function showMessage(message, type = 'info') {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.className = 'message-box show'; // Adiciona a classe 'show' para exibir
+            setTimeout(() => {
+                messageBox.className = 'message-box'; // Remove a classe 'show' para esconder
+            }, 3000); // Esconde após 3 segundos
+        }
+
+        /**
+         * Exibe um modal de confirmação personalizado.
+         * @param {string} message - A mensagem de confirmação.
+         * @param {string} title - O título do modal.
+         * @returns {Promise<boolean>} Uma promessa que resolve para true se 'Sim', false se 'Não'.
+         */
+        function showCustomConfirm(message, title = 'Confirmação') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('customConfirmModal');
+                const modalTitle = document.getElementById('customConfirmTitle');
+                const modalMessage = document.getElementById('customConfirmMessage');
+                const btnYes = document.getElementById('customConfirmYes');
+                const btnNo = document.getElementById('customConfirmNo');
+
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                modal.classList.add('show');
+
+                const handleYes = () => {
+                    modal.classList.remove('show');
+                    btnYes.removeEventListener('click', handleYes);
+                    btnNo.removeEventListener('click', handleNo);
+                    resolve(true);
+                };
+
+                const handleNo = () => {
+                    modal.classList.remove('show');
+                    btnYes.removeEventListener('click', handleYes);
+                    btnNo.removeEventListener('click', handleNo);
+                    resolve(false);
+                };
+
+                btnYes.addEventListener('click', handleYes);
+                btnNo.addEventListener('click', handleNo);
+            });
+        }
+
+        /**
+         * Formata um número para o formato de moeda brasileira (R$).
+         * @param {number} value - O valor numérico.
+         * @returns {string} O valor formatado como string.
+         */
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+
+        /**
+         * Formata uma data para o formato DD/MM/YYYY HH:MM.
+         * @param {Date} date - Objeto Date.
+         * @returns {string} A data formatada como string.
+         */
+        function formatDate(date) {
+            const d = new Date(date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}:${minutes}`;
+        }
+
+        /**
+         * Converte um array de objetos para uma string CSV.
+         * @param {Array<Object>} data - Os dados a serem exportados.
+         * @param {Array<string>} headers - Os cabeçalhos das colunas.
+         * @returns {string} A string CSV.
+         */
+        function convertToCSV(data, headers) {
+            const headerRow = headers.join(';'); // Use semicolon for Brazilian CSV standard
+            const rows = data.map(row =>
+                headers.map(header => {
+                    let value = row[header] !== undefined && row[header] !== null ? row[header] : '';
+                    // Handle nested objects for sales/purchases items
+                    if (typeof value === 'object' && value !== null) {
+                        value = JSON.stringify(value); // Stringify complex objects
+                    }
+                    // Escape quotes and handle semicolons within data
+                    value = String(value).replace(/"/g, '""');
+                    if (value.includes(';') || value.includes('\n')) {
+                        value = `"${value}"`;
+                    }
+                    return value;
+                }).join(';')
+            );
+            return [headerRow, ...rows].join('\n');
+        }
+
+        /**
+         * Baixa um arquivo com o conteúdo fornecido.
+         * @param {string} content - O conteúdo do arquivo.
+         * @param {string} filename - O nome do arquivo.
+         * @param {string} type - O tipo MIME do arquivo.
+         */
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type: type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        /**
+         * Exibe o modal de código de barras.
+         * @param {string} barcode - O código de barras a ser exibido.
+         * @param {string} productName - O nome do produto.
+         * @param {number} productPrice - O preço do produto.
+         */
+        function showBarcodeModal(barcode, productName, productPrice) {
+            const modal = document.getElementById('barcodeModal');
+            const barcodeSvgElement = document.getElementById('barcodeSvg'); // Get the SVG element
+
+            modal.querySelector('.barcode-product-name').textContent = productName;
+            modal.querySelector('.barcode-product-price').textContent = formatCurrency(productPrice);
+
+            // Clear previous barcode if any
+            barcodeSvgElement.innerHTML = '';
+
+            // Generate EAN-13 barcode using JsBarcode
+            JsBarcode(barcodeSvgElement, barcode, {
+                format: "EAN13",
+                displayValue: true, // Show the human-readable value below the bars
+                width: 2,           // Width of a single bar
+                height: 100,        // Height of the barcode
+                background: "#f9f9f9", // Match modal background
+                lineColor: "#333",  // Bar color
+                textMargin: 5,      // Margin between barcode and text
+                fontSize: 20        // Font size for the human-readable text
+            });
+
+            modal.classList.add('show');
+        }
+
+        // Event listener for closing the barcode modal
+        document.getElementById('closeBarcodeModalBtn').addEventListener('click', () => {
+            document.getElementById('barcodeModal').classList.remove('show');
+        });
+
+
+        // --- Funções IndexedDB ---
+
+        /**
+         * Abre (ou cria) o banco de dados IndexedDB e seus object stores.
+         * @returns {Promise<IDBDatabase>} Uma promessa que resolve com a instância do banco de dados.
+         */
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    console.log('IndexedDB: Executando onupgradeneeded...');
+                    // Cria o object store 'products'
+                    if (!db.objectStoreNames.contains('products')) {
+                        console.log('IndexedDB: Criando object store "products"');
+                        const productStore = db.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
+                        productStore.createIndex('name', 'name', { unique: false });
+                        productStore.createIndex('sku', 'sku', { unique: true });
+                        productStore.createIndex('barcode', 'barcode', { unique: true }); // Adicionado índice único para barcode
+                    } else {
+                        // Se o object store já existe, verifica se o índice 'barcode' existe e o cria se não
+                        const productStore = request.transaction.objectStore('products');
+                        if (!productStore.indexNames.contains('barcode')) {
+                            console.log('IndexedDB: Criando índice "barcode" no object store "products"');
+                            productStore.createIndex('barcode', 'barcode', { unique: true });
+                        }
+                    }
+                    // Cria o object store 'sales'
+                    if (!db.objectStoreNames.contains('sales')) {
+                        console.log('IndexedDB: Criando object store "sales"');
+                        const salesStore = db.createObjectStore('sales', { keyPath: 'id', autoIncrement: true });
+                        salesStore.createIndex('timestamp', 'timestamp', { unique: false });
+                    }
+                    // Cria o object store 'receipts'
+                    if (!db.objectStoreNames.contains('receipts')) {
+                        console.log('IndexedDB: Criando object store "receipts"');
+                        const receiptsStore = db.createObjectStore('receipts', { keyPath: 'id', autoIncrement: true });
+                        receiptsStore.createIndex('timestamp', 'timestamp', { unique: false });
+                        receiptsStore.createIndex('productId', 'productId', { unique: false });
+                        receiptsStore.createIndex('purchaseOrderId', 'purchaseOrderId', { unique: false, multiEntry: false }); // Novo índice
+                    }
+                     // Cria o object store 'purchases'
+                    if (!db.objectStoreNames.contains('purchases')) {
+                        console.log('IndexedDB: Criando object store "purchases"');
+                        const purchasesStore = db.createObjectStore('purchases', { keyPath: 'id', autoIncrement: true });
+                        purchasesStore.createIndex('timestamp', 'timestamp', { unique: false });
+                        purchasesStore.createIndex('supplier', 'supplier', { unique: false });
+                        // Adicionando índice para approvalStatus
+                        purchasesStore.createIndex('approvalStatus', 'approvalStatus', { unique: false });
+                        purchasesStore.createIndex('status', 'status', { unique: false }); // Adicionando índice para status geral
+                    }
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('IndexedDB: Banco de dados aberto com sucesso.');
+                    resolve(db);
+                };
+
+                request.onerror = (event) => {
+                    console.error('IndexedDB: Erro ao abrir banco de dados:', event.target.errorCode, event.target.error);
+                    showMessage('Erro ao abrir o banco de dados. Verifique o console.', 'error');
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Adiciona um item a um object store.
+         * @param {string} storeName - Nome do object store.
+         * @param {Object} item - O item a ser adicionado.
+         * @returns {Promise<number>} Uma promessa que resolve com o ID do item adicionado.
+         */
+        function addItem(storeName, item) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.add(item);
+
+                request.onsuccess = (event) => {
+                    console.log(`IndexedDB: Item adicionado ao ${storeName} com ID:`, event.target.result);
+                    resolve(event.target.result);
+                };
+
+                request.onerror = (event) => {
+                    console.error(`IndexedDB: Erro ao adicionar item ao ${storeName}:`, event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Obtém todos os itens de um object store.
+         * @param {string} storeName - Nome do object store.
+         * @returns {Promise<Array<Object>>} Uma promessa que resolve com um array de itens.
+         */
+        function getAllItems(storeName) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
+
+                request.onsuccess = (event) => {
+                    console.log(`IndexedDB: Itens obtidos de ${storeName}:`, event.target.result.length);
+                    resolve(event.target.result);
+                };
+
+                request.onerror = (event) => {
+                    console.error(`IndexedDB: Erro ao obter itens de ${storeName}:`, event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Obtém um item por ID de um object store.
+         * @param {string} storeName - Nome do object store.
+         * @param {number} id - O ID do item.
+         * @returns {Promise<Object>} Uma promessa que resolve com o item.
+         */
+        function getItemById(storeName, id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.get(id);
+
+                request.onsuccess = (event) => {
+                    console.log(`IndexedDB: Item ${id} obtido de ${storeName}:`, event.target.result);
+                    resolve(event.target.result);
+                };
+
+                request.onerror = (event) => {
+                    console.error(`IndexedDB: Erro ao obter item ${id} de ${storeName}:`, event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Atualiza um item em um object store.
+         * @param {string} storeName - Nome do object store.
+         * @param {Object} item - O item a ser atualizado (deve conter o keyPath).
+         * @returns {Promise<void>} Uma promessa que resolve quando a atualização é concluída.
+         */
+        function updateItem(storeName, item) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.put(item); // put() atualiza se existe, adiciona se não
+
+                request.onsuccess = () => {
+                    console.log(`IndexedDB: Item atualizado em ${storeName}:`, item);
+                    resolve();
+                };
+
+                request.onerror = (event) => {
+                    console.error(`IndexedDB: Erro ao atualizar item em ${storeName}:`, event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Deleta um item de um object store.
+         * @param {string} storeName - Nome do object store.
+         * @param {number} id - O ID do item a ser deletado.
+         * @returns {Promise<void>} Uma promessa que resolve quando a deleção é concluída.
+         */
+        function deleteItem(storeName, id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.delete(id);
+
+                request.onsuccess = () => {
+                    console.log(`IndexedDB: Item ${id} deletado de ${storeName}`);
+                    resolve();
+                };
+
+                request.onerror = (event) => {
+                    console.error(`IndexedDB: Erro ao deletar item ${id} de ${storeName}:`, event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        /**
+         * Limpa todos os itens de um object store.
+         * @param {string} storeName - Nome do object store.
+         * @returns {Promise<void>} Uma promessa que resolve quando a operação é concluída.
+         */
+        function clearStore(storeName) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.clear();
+
+                request.onsuccess = () => {
+                    console.log(`IndexedDB: Object store "${storeName}" limpo.`);
+                    resolve();
+                };
+                request.onerror = (event) => {
+                    console.error(`IndexedDB: Erro ao limpar object store "${storeName}":`, event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+
+        // --- Lógica do Módulo de Cadastro de Produtos ---
+
+        const productForm = document.getElementById('productForm');
+        const productIdInput = document.getElementById('productId');
+        const productNameInput = document.getElementById('productName');
+        const productSKUInput = document.getElementById('productSKU');
+        const productBarcodeInput = document.getElementById('productBarcode'); // Novo campo
+        const productPriceInput = document.getElementById('productPrice');
+        const productCostPriceInput = document.getElementById('productCostPrice');
+        const productQuantityInput = document.getElementById('productQuantity');
+        const productUnitInput = document.getElementById('productUnit');
+        const productCategoryInput = document.getElementById('productCategory');
+        const productSupplierInput = document.getElementById('productSupplier');
+        const productNCMInput = document.getElementById('productNCM');
+        const productCESTInput = document.getElementById('productCEST');
+        const productCFOPInput = document.getElementById('productCFOP');
+        const clearProductFormBtn = document.getElementById('clearProductForm');
+
+        /**
+         * Gera um código de barras EAN-13 válido com 13 dígitos.
+         * @returns {string} O código EAN-13 gerado.
+         */
+        function generateEAN13Barcode() {
+            // Gerar 12 dígitos aleatórios (prefixo + dados do item)
+            let barcode12Digits = '';
+            for (let i = 0; i < 12; i++) {
+                barcode12Digits += Math.floor(Math.random() * 10).toString();
+            }
+
+            // Calcular o dígito verificador (checksum)
+            let sum = 0;
+            for (let i = 0; i < 12; i++) {
+                const digit = parseInt(barcode12Digits[i]);
+                if ((i + 1) % 2 === 0) { // Posições pares (2ª, 4ª, etc.) são multiplicadas por 3
+                    sum += digit * 3;
+                } else { // Posições ímpares (1ª, 3ª, etc.) são multiplicadas por 1
+                    sum += digit * 1;
+                }
+            }
+
+            const remainder = sum % 10;
+            const checkDigit = (remainder === 0) ? 0 : (10 - remainder);
+
+            return barcode12Digits + checkDigit.toString();
+        }
+
+        /**
+         * Valida se o código de barras é um EAN-13 válido (13 dígitos numéricos e checksum correto).
+         * @param {string} barcode - O código de barras a ser validado.
+         * @returns {boolean} True se for um EAN-13 válido, false caso contrário.
+         */
+        function isValidEAN13(barcode) {
+            if (!barcode) return false; // Barcode é obrigatório e não pode ser vazio
+            const regex = /^[0-9]{13}$/;
+            if (!regex.test(barcode)) {
+                return false; // Não tem 13 dígitos numéricos
+            }
+
+            const digits = barcode.split('').map(Number);
+            const checkDigit = digits.pop(); // Último dígito é o verificador
+
+            let sum = 0;
+            for (let i = 0; i < 12; i++) {
+                const digit = digits[i];
+                if ((i + 1) % 2 === 0) { // Posições pares (2ª, 4ª, etc.) são multiplicadas por 3
+                    sum += digit * 3;
+                } else { // Posições ímpares (1ª, 3ª, etc.) são multiplicadas por 1
+                    sum += digit * 1;
+                }
+            }
+
+            const remainder = sum % 10;
+            const calculatedCheckDigit = (remainder === 0) ? 0 : (10 - remainder);
+
+            return calculatedCheckDigit === checkDigit;
+        }
+
+        /**
+         * Sugere um código de barras EAN-13 para um novo produto.
+         */
+        function suggestBarcodeForNewProduct() {
+            // Apenas sugere se o campo de ID do produto estiver vazio (novo produto)
+            // e se o campo de código de barras também estiver vazio
+            if (!productIdInput.value && !productBarcodeInput.value) {
+                productBarcodeInput.value = generateEAN13Barcode();
+                console.log('Cadastro de Produtos: Código de barras EAN-13 sugerido:', productBarcodeInput.value);
+            }
+        }
+
+        /**
+         * Lida com o envio do formulário de produto (adicionar/editar).
+         */
+        productForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('Cadastro de Produtos: Formulário de produto enviado.');
+
+            const barcodeValue = productBarcodeInput.value.trim();
+            if (!barcodeValue || !isValidEAN13(barcodeValue)) {
+                showMessage('Código de Barras inválido ou vazio. Deve conter 13 dígitos numéricos e ser um EAN-13 válido.', 'error');
+                console.warn('Cadastro de Produtos: Validação de EAN-13 falhou ou campo vazio.');
+                return;
+            }
+
+            const product = {
+                name: productNameInput.value,
+                sku: productSKUInput.value,
+                barcode: barcodeValue, // Inclui o código de barras
+                price: parseFloat(productPriceInput.value),
+                costPrice: parseFloat(productCostPriceInput.value || 0),
+                quantity: parseInt(productQuantityInput.value),
+                unit: productUnitInput.value,
+                category: productCategoryInput.value,
+                supplier: productSupplierInput.value,
+                ncm: productNCMInput.value,
+                cest: productCESTInput.value,
+                cfop: productCFOPInput.value
+            };
+
+            console.log('Cadastro de Produtos: Dados do produto a salvar:', product);
+
+            try {
+                if (productIdInput.value) {
+                    // Edição de produto existente
+                    product.id = parseInt(productIdInput.value);
+                    await updateItem('products', product);
+                    showMessage('Produto atualizado com sucesso!', 'success');
+                } else {
+                    // Novo produto
+                    await addItem('products', product);
+                    showMessage('Produto adicionado com sucesso!', 'success');
+                }
+                productForm.reset();
+                productIdInput.value = ''; // Limpa o ID para novas adições
+                suggestBarcodeForNewProduct(); // Sugere um novo código para o próximo cadastro
+                // Não precisa carregar produtos aqui, pois a aba de inventário fará isso quando ativada
+            } catch (error) {
+                if (error.name === 'ConstraintError') {
+                    // Verifica se o erro é devido a um barcode duplicado
+                    if (error.message.includes('barcode')) { // IndexedDB error messages might vary, this is a common pattern
+                        showMessage('Código de Barras já existe. Por favor, use um valor único ou limpe o campo para gerar um novo.', 'error');
+                    } else if (error.message.includes('sku')) {
+                        showMessage('SKU já existe. Por favor, use um valor único.', 'error');
+                    } else {
+                        showMessage('Erro de restrição: Um valor único (SKU ou Código de Barras) já existe.', 'error');
+                    }
+                    console.error('Cadastro de Produtos: Erro de restrição (SKU/Barcode duplicado):', error);
+                } else {
+                    showMessage('Erro ao salvar produto.', 'error');
+                    console.error('Cadastro de Produtos: Erro ao salvar produto:', error);
+                }
+            }
+        });
+
+        // Limpar formulário de produto
+        clearProductFormBtn.addEventListener('click', () => {
+            productForm.reset();
+            productIdInput.value = '';
+            suggestBarcodeForNewProduct(); // Sugere um novo código ao limpar
+            showMessage('Formulário de produto limpo.');
+            console.log('Cadastro de Produtos: Formulário de produto limpo.');
+        });
+
+        // --- Lógica do Módulo de Controle de Estoque (NOVO) ---
+        const regularStockList = document.getElementById('regularStockList');
+        const incomingItemsList = document.getElementById('incomingItemsList');
+
+        /**
+         * Carrega e renderiza o estoque regular e itens para chegar.
+         */
+        async function loadStockControl() {
+            console.log('Controle de Estoque: Carregando dados para controle de estoque...');
+            try {
+                // Carregar Estoque Regular
+                const productsInStock = await getAllItems('products');
+                renderRegularStock(productsInStock);
+
+                // Carregar Itens para Chegar
+                const allPurchases = await getAllItems('purchases');
+                const incomingItems = [];
+
+                for (const purchase of allPurchases) {
+                    // Filtra pedidos que são Aprovados ou Recebidos Parcialmente e têm itens pendentes
+                    if ((purchase.approvalStatus === 'Aprovado' || purchase.status === 'Recebido Parcialmente') && purchase.status !== 'Recebido') {
+                        for (const item of purchase.items) {
+                            const received = item.receivedQuantity || 0;
+                            const pending = item.quantity - received;
+                            if (pending > 0) {
+                                incomingItems.push({
+                                    productName: item.name,
+                                    productBarcode: item.barcode, // Inclui o código de barras
+                                    pendingQuantity: pending,
+                                    supplier: purchase.supplier,
+                                    purchaseOrderId: purchase.id,
+                                    orderDate: purchase.timestamp // Usando a data do pedido como referência
+                                });
+                            }
+                        }
+                    }
+                }
+                renderIncomingItems(incomingItems);
+
+            } catch (error) {
+                showMessage('Erro ao carregar dados de controle de estoque.', 'error');
+                console.error('Controle de Estoque: Erro ao carregar dados:', error);
+            }
+        }
+
+        /**
+         * Renderiza a lista de produtos em estoque regular.
+         * @param {Array<Object>} products - Produtos em estoque.
+         */
+        function renderRegularStock(products) {
+            console.log('Controle de Estoque: Renderizando estoque regular. Itens:', products.length);
+            regularStockList.innerHTML = '';
+            if (products.length === 0) {
+                regularStockList.innerHTML = `<tr><td colspan="5" class="text-center text-gray-500 py-4">Nenhum produto em estoque.</td></tr>`;
+                return;
+            }
+            products.forEach(product => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4">${product.name}</td>
+                    <td class="py-2 px-4">${product.sku || '-'}</td>
+                    <td class="py-2 px-4">
+                        ${product.barcode ? `
+                            ${product.barcode}
+                            <i class="fas fa-barcode text-gray-600 ml-2 cursor-pointer" onclick="showBarcodeModal('${product.barcode}', '${product.name}', ${product.price})"></i>
+                        ` : '-'}
+                    </td>
+                    <td class="py-2 px-4">${product.quantity}</td>
+                    <td class="py-2 px-4">${product.unit || '-'}</td>
+                `;
+                regularStockList.appendChild(row);
+            });
+        }
+
+        /**
+         * Renderiza a lista de itens para chegar.
+         * @param {Array<Object>} items - Itens pendentes de recebimento.
+         */
+        function renderIncomingItems(items) {
+            console.log('Controle de Estoque: Renderizando itens para chegar. Itens:', items.length);
+            incomingItemsList.innerHTML = '';
+            if (items.length === 0) {
+                incomingItemsList.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">Nenhum item para chegar.</td></tr>`;
+                return;
+            }
+            items.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4">${item.productName}</td>
+                    <td class="py-2 px-4">
+                        ${item.productBarcode ? `
+                            ${item.productBarcode}
+                            <i class="fas fa-barcode text-gray-600 ml-2 cursor-pointer" onclick="showBarcodeModal('${item.productBarcode}', '${item.productName}', 0)"></i>
+                        ` : '-'}
+                    </td>
+                    <td class="py-2 px-4">${item.pendingQuantity}</td>
+                    <td class="py-2 px-4">${item.supplier || '-'}</td>
+                    <td class="py-2 px-4">#${item.purchaseOrderId}</td>
+                    <td class="py-2 px-4">${formatDate(item.orderDate)}</td>
+                `;
+                incomingItemsList.appendChild(row);
+            });
+        }
+
+
+        // --- Lógica do Módulo de Inventário de Produtos ---
+
+        const inventoryList = document.getElementById('inventoryList');
+        const inventorySearchInput = document.getElementById('inventorySearch');
+        const viewAllProductsBtn = document.getElementById('viewAllProductsBtn');
+
+        let allProducts = []; // Cache para produtos
+
+        /**
+         * Renderiza a lista de produtos no inventário.
+         * @param {Array<Object>} productsToDisplay - Produtos a serem exibidos.
+         */
+        async function renderInventory(productsToDisplay = allProducts) {
+            console.log('Inventário de Produtos: Renderizando inventário com', productsToDisplay.length, 'produtos.');
+            inventoryList.innerHTML = '';
+            if (productsToDisplay.length === 0) {
+                inventoryList.innerHTML = `<tr><td colspan="13" class="text-center text-gray-500 py-4">Nenhum produto cadastrado.</td></tr>`;
+                return;
+            }
+            productsToDisplay.forEach(product => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4">${product.name}</td>
+                    <td class="py-2 px-4">${product.sku || '-'}</td>
+                    <td class="py-2 px-4">
+                        ${product.barcode ? `
+                            ${product.barcode}
+                            <i class="fas fa-barcode text-gray-600 ml-2 cursor-pointer" onclick="showBarcodeModal('${product.barcode}', '${product.name}', ${product.price})"></i>
+                        ` : '-'}
+                    </td>
+                    <td class="py-2 px-4">${formatCurrency(product.price)}</td>
+                    <td class="py-2 px-4">${formatCurrency(product.costPrice || 0)}</td>
+                    <td class="py-2 px-4">${product.quantity}</td>
+                    <td class="py-2 px-4">${product.unit || '-'}</td>
+                    <td class="py-2 px-4">${product.category || '-'}</td>
+                    <td class="py-2 px-4">${product.supplier || '-'}</td>
+                    <td class="py-2 px-4">${product.ncm || '-'}</td>
+                    <td class="py-2 px-4">${product.cest || '-'}</td>
+                    <td class="py-2 px-4">${product.cfop || '-'}</td>
+                    <td class="py-2 px-4">
+                        <button class="btn btn-secondary btn-sm mr-2" onclick="editProductFromInventory(${product.id})">Editar</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProduct(${product.id})">Excluir</button>
+                    </td>
+                `;
+                inventoryList.appendChild(row);
+            });
+        }
+
+        /**
+         * Carrega os produtos do IndexedDB e renderiza o inventário.
+         */
+        async function loadProducts() {
+            console.log('Inventário de Produtos: Carregando produtos...');
+            try {
+                allProducts = await getAllItems('products');
+                renderInventory();
+            } catch (error) {
+                showMessage('Erro ao carregar produtos.', 'error');
+                console.error('Inventário de Produtos: Erro ao carregar produtos:', error);
+            }
+        }
+
+        /**
+         * Preenche o formulário de produto para edição, mas na aba de cadastro.
+         * @param {number} id - ID do produto a ser editado.
+         */
+        async function editProductFromInventory(id) {
+            console.log('Inventário de Produtos: Editando produto com ID:', id, ' (redirecionando para Cadastro).');
+            try {
+                const product = await getItemById('products', id);
+                if (product) {
+                    // Ativa a aba de Cadastro de Produtos
+                    document.querySelector('[data-tab="cadastro-produtos"]').click();
+
+                    // Preenche o formulário
+                    productIdInput.value = product.id;
+                    productNameInput.value = product.name;
+                    productSKUInput.value = product.sku;
+                    productBarcodeInput.value = product.barcode; // Preenche o código de barras
+                    productPriceInput.value = product.price;
+                    productCostPriceInput.value = product.costPrice;
+                    productQuantityInput.value = product.quantity;
+                    productUnitInput.value = product.unit;
+                    productCategoryInput.value = product.category;
+                    productSupplierInput.value = product.supplier;
+                    productNCMInput.value = product.ncm;
+                    productCESTInput.value = product.cest;
+                    productCFOPInput.value = product.cfop;
+                    showMessage(`Editando produto: ${product.name} na aba de Cadastro.`);
+                    productForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    showMessage('Produto não encontrado para edição.', 'error');
+                    console.warn('Inventário de Produtos: Produto com ID', id, 'não encontrado para edição.');
+                }
+            } catch (error) {
+                showMessage('Erro ao carregar produto para edição.', 'error');
+                console.error('Inventário de Produtos: Erro ao carregar produto para edição:', error);
+            }
+        }
+
+        /**
+         * Deleta um produto.
+         * @param {number} id - ID do produto a ser deletado.
+         */
+        async function deleteProduct(id) {
+            const confirmed = await showCustomConfirm('Tem certeza que deseja excluir este produto?', 'Excluir Produto');
+            if (confirmed) {
+                console.log('Inventário de Produtos: Deletando produto com ID:', id);
+                try {
+                    await deleteItem('products', id);
+                    showMessage('Produto excluído com sucesso!', 'success');
+                    loadProducts(); // Recarrega o inventário
+                    updateAvailableProducts(); // Atualiza cache de produtos para outras abas
+                }
+                catch (error) {
+                    showMessage('Erro ao excluir produto.', 'error');
+                    console.error('Inventário de Produtos: Erro ao excluir produto:', error);
+                }
+            } else {
+                console.log('Inventário de Produtos: Exclusão de produto cancelada.');
+            }
+        }
+
+        /**
+         * Filtra a lista de inventário com base no termo de pesquisa.
+         */
+        inventorySearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            console.log('Inventário de Produtos: Pesquisando inventário por:', searchTerm);
+            const filteredProducts = allProducts.filter(product =>
+                product.name.toLowerCase().includes(searchTerm) ||
+                (product.sku && product.sku.toLowerCase().includes(searchTerm)) ||
+                (product.barcode && product.barcode.toLowerCase().includes(searchTerm))
+            );
+            renderInventory(filteredProducts);
+        });
+
+        // Botão para visualizar todos os produtos
+        viewAllProductsBtn.addEventListener('click', () => {
+            console.log('Inventário de Produtos: Botão "Visualizar Todos os Produtos" clicado.');
+            inventorySearchInput.value = ''; // Limpa o filtro de pesquisa
+            // Dispara o evento 'input' para que o listener do campo de pesquisa reaja e renderize todos os produtos
+            inventorySearchInput.dispatchEvent(new Event('input'));
+            showMessage('Exibindo todos os produtos em estoque.');
+        });
+
+
+        // --- Lógica do Módulo de Caixa (Checkout) ---
+
+        const checkoutAddItemForm = document.getElementById('checkoutAddItemForm');
+        const checkoutProductSearchInput = document.getElementById('checkoutProductSearch');
+        const checkoutProductSuggestionsDiv = document.getElementById('checkoutProductSuggestions');
+        const checkoutQuantityInput = document.getElementById('checkoutQuantity');
+        const checkoutCartList = document.getElementById('checkoutCartList');
+        const checkoutTotalSpan = document.getElementById('checkoutTotal');
+        const checkoutForm = document.getElementById('checkoutForm');
+        const paymentMethodSelect = document.getElementById('paymentMethod');
+        const clearCartBtn = document.getElementById('clearCart');
+        const openWebcamScannerBtn = document.getElementById('openWebcamScannerBtn'); // Novo botão
+        const webcamScannerModal = document.getElementById('webcamScannerModal'); // Novo modal
+        const stopWebcamScannerBtn = document.getElementById('stopWebcamScannerBtn'); // Botão parar scanner
+        const closeWebcamScannerModalBtn = document.getElementById('closeWebcamScannerModalBtn'); // Botão fechar modal
+        const scannerMessage = document.getElementById('scannerMessage'); // Mensagem do scanner
+
+        let cart = []; // Array para armazenar os itens do carrinho
+        let availableProducts = []; // Cache para produtos disponíveis para pesquisa no caixa
+
+        /**
+         * Atualiza a lista de produtos disponíveis para pesquisa no caixa.
+         */
+        async function updateAvailableProducts() {
+            console.log('Caixa/Recebimentos/Compras/Aprovações/Controle de Estoque: Atualizando lista de produtos disponíveis...');
+            try {
+                availableProducts = await getAllItems('products');
+                console.log('Caixa/Recebimentos/Compras/Aprovações/Controle de Estoque: Produtos disponíveis carregados:', availableProducts.length);
+            } catch (error) {
+                console.error('Caixa/Recebimentos/Compras/Aprovações/Controle de Estoque: Erro ao carregar produtos disponíveis:', error);
+            }
+        }
+
+        /**
+         * Exibe sugestões de produtos ao digitar no campo de pesquisa do caixa.
+         */
+        checkoutProductSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            checkoutProductSuggestionsDiv.innerHTML = '';
+            // Limpa o ID do produto selecionado anteriormente para evitar adicionar o produto errado
+            delete checkoutProductSearchInput.dataset.selectedProductId;
+            console.log('Caixa: Pesquisando produto para adicionar ao carrinho:', searchTerm);
+
+            if (searchTerm.length < 2) { // Mínimo de 2 caracteres para sugestões
+                return;
+            }
+
+            const filtered = availableProducts.filter(p =>
+                p.name.toLowerCase().includes(searchTerm) ||
+                (p.barcode && p.barcode.toLowerCase().includes(searchTerm)) ||
+                (p.sku && p.sku.toLowerCase().includes(searchTerm))
+            );
+
+            filtered.slice(0, 5).forEach(product => { // Limita a 5 sugestões
+                const div = document.createElement('div');
+                div.className = 'p-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0';
+                div.textContent = `${product.name} (Qtd: ${product.quantity}, R$ ${product.price.toFixed(2)}) ${product.barcode ? `[${product.barcode}]` : ''}`;
+                div.dataset.productId = product.id; // Armazena o ID no dataset do elemento de sugestão
+                div.addEventListener('click', () => {
+                    checkoutProductSearchInput.value = product.name; // Preenche o campo com o nome
+                    checkoutProductSearchInput.dataset.selectedProductId = product.id; // Armazena o ID no dataset do input de pesquisa
+                    checkoutProductSuggestionsDiv.innerHTML = ''; // Limpa sugestões
+                    console.log('Caixa: Produto selecionado da sugestão:', product.name, 'ID:', product.id);
+                });
+                checkoutProductSuggestionsDiv.appendChild(div);
+            });
+        });
+
+        /**
+         * Adiciona um item ao carrinho.
+         */
+        checkoutAddItemForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const productId = parseInt(checkoutProductSearchInput.dataset.selectedProductId); // Pega o ID do dataset
+            const quantity = parseInt(checkoutQuantityInput.value);
+
+            console.log('Caixa: Tentando adicionar ao carrinho - Produto ID:', productId, 'Quantidade:', quantity);
+
+            if (isNaN(productId) || !productId) {
+                showMessage('Por favor, selecione um produto válido da lista de sugestões.', 'error');
+                console.warn('Caixa: Produto ID inválido ou não selecionado.');
+                return;
+            }
+            if (isNaN(quantity) || quantity <= 0) {
+                showMessage('Quantidade inválida. Insira um número maior que zero.', 'error');
+                console.warn('Caixa: Quantidade inválida:', quantity);
+                return;
+            }
+
+            try {
+                const product = await getItemById('products', productId);
+                if (!product) {
+                    showMessage('Produto não encontrado no estoque.', 'error');
+                    console.warn('Caixa: Produto não encontrado para o ID:', productId);
+                    return;
+                }
+                if (product.quantity < quantity) {
+                    showMessage(`Estoque insuficiente para ${product.name}. Disponível: ${product.quantity}`, 'error');
+                    console.warn(`Caixa: Estoque insuficiente para ${product.name}. Disponível: ${product.quantity}, Solicitado: ${quantity}`);
+                    return;
+                }
+
+                const existingCartItemIndex = cart.findIndex(item => item.productId === productId);
+
+                if (existingCartItemIndex > -1) {
+                    // Atualiza quantidade se o item já estiver no carrinho
+                    cart[existingCartItemIndex].quantity += quantity;
+                    cart[existingCartItemIndex].total = cart[existingCartItemIndex].quantity * product.price;
+                    console.log('Caixa: Quantidade do item atualizada no carrinho:', cart[existingCartItemIndex]);
+                } else {
+                    // Adiciona novo item ao carrinho
+                    const newCartItem = {
+                        productId: product.id,
+                        name: product.name,
+                        price: product.price,
+                        quantity: quantity,
+                        total: quantity * product.price,
+                        barcode: product.barcode // Inclui o código de barras
+                    };
+                    cart.push(newCartItem);
+                    console.log('Caixa: Novo item adicionado ao carrinho:', newCartItem);
+                }
+                renderCart();
+                checkoutAddItemForm.reset();
+                checkoutProductSearchInput.value = '';
+                delete checkoutProductSearchInput.dataset.selectedProductId; // Limpa o ID selecionado
+                showMessage(`${product.name} adicionado ao carrinho!`, 'success');
+            } catch (error) {
+                showMessage('Erro ao adicionar item ao carrinho.', 'error');
+                console.error('Caixa: Erro ao adicionar item ao carrinho:', error);
+            }
+        });
+
+        /**
+         * Remove um item do carrinho.
+         * @param {number} productId - ID do produto a ser removido.
+         */
+        function removeCartItem(productId) {
+            console.log('Caixa: Removendo item do carrinho com ID:', productId);
+            cart = cart.filter(item => item.productId !== productId);
+            renderCart();
+            showMessage('Item removido do carrinho.');
+        }
+
+        /**
+         * Renderiza os itens do carrinho e atualiza o total.
+         */
+        function renderCart() {
+            console.log('Caixa: Renderizando carrinho. Itens:', cart.length);
+            checkoutCartList.innerHTML = '';
+            let totalCart = 0;
+
+            if (cart.length === 0) {
+                checkoutCartList.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">Nenhum item no carrinho.</td></tr>`;
+                checkoutTotalSpan.textContent = formatCurrency(0);
+                return;
+            }
+
+            cart.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4">${item.name}</td>
+                    <td class="py-2 px-4">
+                        ${item.barcode ? `
+                            ${item.barcode}
+                            <i class="fas fa-barcode text-gray-600 ml-2 cursor-pointer" onclick="showBarcodeModal('${item.barcode}', '${item.name}', ${item.price})"></i>
+                        ` : '-'}
+                    </td>
+                    <td class="py-2 px-4">${item.quantity}</td>
+                    <td class="py-2 px-4">${formatCurrency(item.price)}</td>
+                    <td class="py-2 px-4">${formatCurrency(item.total)}</td>
+                    <td class="py-2 px-4">
+                        <button class="btn btn-danger btn-sm" onclick="removeCartItem(${item.productId})">Remover</button>
+                    </td>
+                `;
+                checkoutCartList.appendChild(row);
+                totalCart += item.total;
+            });
+            checkoutTotalSpan.textContent = formatCurrency(totalCart);
+        }
+
+        /**
+         * Finaliza a venda, registra no IndexedDB e atualiza o estoque.
+         */
+        checkoutForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('Caixa: Finalizando venda...');
+
+            if (cart.length === 0) {
+                showMessage('O carrinho está vazio. Adicione produtos antes de finalizar a venda.', 'error');
+                console.warn('Caixa: Tentativa de finalizar venda com carrinho vazio.');
+                return;
+            }
+            if (!paymentMethodSelect.value) {
+                showMessage('Selecione uma forma de pagamento.', 'error');
+                console.warn('Caixa: Forma de pagamento não selecionada.');
+                return;
+            }
+
+            const totalSale = cart.reduce((sum, item) => sum + item.total, 0);
+            const sale = {
+                timestamp: new Date().toISOString(),
+                items: cart.map(item => ({ productId: item.productId, name: item.name, quantity: item.quantity, price: item.price, total: item.total, barcode: item.barcode })), // Inclui o código de barras
+                total: totalSale,
+                paymentMethod: paymentMethodSelect.value
+            };
+
+            console.log('Caixa: Dados da venda a registrar:', sale);
+
+            try {
+                // Inicia uma transação para garantir atomicidade (venda e atualização de estoque)
+                const transaction = db.transaction(['sales', 'products'], 'readwrite');
+                const salesStore = transaction.objectStore('sales');
+                const productStore = transaction.objectStore('products');
+
+                // Adiciona a venda
+                salesStore.add(sale);
+                console.log('Caixa: Venda adicionada ao salesStore.');
+
+                // Atualiza o estoque de cada produto vendido
+                for (const item of cart) {
+                    const productRequest = productStore.get(item.productId);
+                    productRequest.onsuccess = (event) => {
+                        const product = event.target.result;
+                        if (product) {
+                            console.log(`Caixa: Atualizando estoque de ${product.name}. Antes: ${product.quantity}, Vendido: ${item.quantity}`);
+                            product.quantity -= item.quantity;
+                            if (product.quantity < 0) product.quantity = 0; // Evita estoque negativo
+                            productStore.put(product);
+                            console.log(`Caixa: Estoque de ${product.name} atualizado para: ${product.quantity}`);
+                        } else {
+                            console.error('Caixa: Produto não encontrado no estoque durante a atualização da venda:', item.productId);
+                            showMessage(`Erro: Produto ${item.name} não encontrado para atualização de estoque.`, 'error');
+                        }
+                    };
+                    productRequest.onerror = (event) => {
+                        console.error('Caixa: Erro ao buscar produto para atualização de estoque:', event.target.error);
+                        showMessage('Erro ao atualizar estoque de um produto.', 'error');
+                    };
+                }
+
+                // Espera a transação ser concluída
+                await new Promise((resolve, reject) => {
+                    transaction.oncomplete = () => {
+                        console.log('Caixa: Transação de venda concluída com sucesso.');
+                        resolve();
+                    };
+                    transaction.onerror = (event) => {
+                        console.error('Caixa: Erro na transação de venda:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+
+                showMessage('Venda finalizada e estoque atualizado com sucesso!', 'success');
+                cart = []; // Limpa o carrinho
+                renderCart();
+                // Não precisa carregar produtos aqui, pois a aba de inventário fará isso quando ativada
+                updateAvailableProducts(); // Atualiza produtos para pesquisa no caixa
+            } catch (error) {
+                showMessage('Erro ao finalizar venda.', 'error');
+                console.error('Caixa: Erro geral ao finalizar venda:', error);
+            }
+        });
+
+        // Limpar carrinho
+        clearCartBtn.addEventListener('click', async () => {
+            const confirmed = await showCustomConfirm('Tem certeza que deseja limpar o carrinho?', 'Limpar Carrinho');
+            if (confirmed) {
+                console.log('Caixa: Limpando carrinho.');
+                cart = [];
+                renderCart();
+                showMessage('Carrinho limpo.');
+            } else {
+                console.log('Caixa: Limpeza do carrinho cancelada.');
+            }
+        });
+
+        // --- Lógica do Scanner de Código de Barras (Webcam) ---
+
+        openWebcamScannerBtn.addEventListener('click', () => {
+            console.log('Webcam Scanner: Abrindo modal do scanner.');
+            webcamScannerModal.classList.add('show');
+            startBarcodeScanner();
+        });
+
+        stopWebcamScannerBtn.addEventListener('click', () => {
+            console.log('Webcam Scanner: Parando escaneamento.');
+            stopBarcodeScanner();
+            scannerMessage.textContent = 'Escaneamento parado.';
+        });
+
+        closeWebcamScannerModalBtn.addEventListener('click', () => {
+            console.log('Webcam Scanner: Fechando modal do scanner.');
+            stopBarcodeScanner();
+            webcamScannerModal.classList.remove('show');
+            scannerMessage.textContent = 'Aguardando câmera...'; // Reset message
+        });
+
+        function startBarcodeScanner() {
+            console.log('Webcam Scanner: Iniciando QuaggaJS...');
+            const video = document.querySelector('#interactive video');
+            const canvas = document.querySelector('#interactive canvas');
+            scannerMessage.textContent = 'Aguardando permissão da câmera...';
+
+            if (typeof Quagga === 'undefined') {
+                scannerMessage.textContent = 'Erro: Biblioteca QuaggaJS não carregada.';
+                showMessage('Erro: Biblioteca QuaggaJS não carregada.', 'error');
+                console.error('Webcam Scanner: QuaggaJS não está definido.');
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                scannerMessage.textContent = 'Seu navegador não suporta acesso à câmera.';
+                showMessage('Seu navegador não suporta acesso à câmera.', 'error');
+                console.error('Webcam Scanner: navigator.mediaDevices.getUserMedia não suportado.');
+                return;
+            }
+
+            // Always stop any previous instance to ensure a clean start
+            stopBarcodeScanner(); // This will reset Quagga.initialized = false
+
+            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: "environment" } })
+                .then(function(stream) {
+                    video.srcObject = stream;
+                    video.onloadedmetadata = function() { // Wait for video metadata to load
+                        video.play(); // Ensure video is playing
+                        console.log('Webcam Scanner: Video metadata loaded. Initializing QuaggaJS...');
+
+                        Quagga.init({
+                            inputStream: {
+                                name: "Live",
+                                type: "LiveStream",
+                                target: '#interactive video', // Use selector string
+                                constraints: {
+                                    width: { min: 640 },
+                                    height: { min: 480 },
+                                    aspectRatio: { min: 1, max: 100 },
+                                    facingMode: "environment"
+                                }
+                            },
+                            decoder: {
+                                readers: ["ean_13_reader"]
+                            },
+                            locate: true,
+                            numOfWorkers: 0, // Ensure no web workers are used
+                            patchSize: "medium",
+                            halfSample: true,
+                            debug: {
+                                drawBoundingBox: true,
+                                showFrequency: false,
+                                drawScanline: true,
+                                showPattern: false
+                            }
+                        }, function (err) {
+                            if (err) {
+                                console.error('Webcam Scanner: Erro ao iniciar QuaggaJS:', err);
+                                scannerMessage.textContent = `Erro ao iniciar câmera: ${err.message}. Verifique as permissões da câmera e se há uma câmera conectada.`;
+                                showMessage(`Erro ao iniciar scanner: ${err.message}`, 'error');
+                                stopBarcodeScanner(); // Ensure cleanup on error
+                                return;
+                            }
+                            console.log("Webcam Scanner: QuaggaJS inicializado. Iniciando escaneamento...");
+                            Quagga.start();
+                            Quagga.initialized = true; // Set flag after successful init and start
+                            scannerMessage.textContent = 'Câmera ativa. Aponte para um código de barras.';
+                        });
+
+                        Quagga.onDetected(function(result) {
+                            console.log('Webcam Scanner: Código de barras detectado:', result.codeResult.code);
+                            const barcode = result.codeResult.code;
+                            if (barcode) {
+                                checkoutProductSearchInput.value = barcode;
+                                const product = availableProducts.find(p => p.barcode === barcode);
+                                if (product) {
+                                    checkoutProductSearchInput.dataset.selectedProductId = product.id;
+                                    showMessage(`Produto "${product.name}" (${barcode}) encontrado!`, 'success');
+                                } else {
+                                    showMessage(`Código de barras "${barcode}" não encontrado no cadastro.`, 'info');
+                                }
+                                stopBarcodeScanner();
+                                webcamScannerModal.classList.remove('show');
+                            }
+                        });
+
+                        Quagga.onProcessed(function(result) {
+                            const drawingCtx = Quagga.canvas.ctx.overlay;
+                            const drawingCanvas = Quagga.canvas.dom.overlay;
+
+                            if (result) {
+                                if (result.boxes) {
+                                    drawingCtx.clearRect(0, 0, parseInt(drawingCanvas.getAttribute("width")), parseInt(drawingCanvas.getAttribute("height")));
+                                    result.boxes.filter(function (box) {
+                                        return box !== result.box;
+                                    }).forEach(function (box) {
+                                        Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, drawingCtx, { color: "green", lineWidth: 2 });
+                                    });
+                                }
+
+                                if (result.box) {
+                                    Quagga.ImageDebug.drawPath(result.box, { x: 0, y: 1 }, drawingCtx, { color: "#00F", lineWidth: 2 });
+                                }
+
+                                if (result.codeResult && result.codeResult.code) {
+                                    Quagga.ImageDebug.drawPath(result.line, { x: 'x', y: 'y' }, drawingCtx, { color: 'red', lineWidth: 3 });
+                                }
+                            }
+                        });
+                    }; // End of video.onloadedmetadata
+                })
+                .catch(function(err) {
+                    console.error('Webcam Scanner: Erro ao acessar a câmera:', err);
+                    scannerMessage.textContent = `Erro ao acessar a câmera: ${err.name} - ${err.message}. Por favor, conceda permissão e tente novamente.`;
+                    showMessage(`Erro ao acessar a câmera: ${err.name}`, 'error');
+                });
+        }
+
+        function stopBarcodeScanner() {
+            console.log('Webcam Scanner: Parando QuaggaJS...');
+            if (typeof Quagga !== 'undefined' && Quagga.initialized) {
+                Quagga.stop();
+                // Remove all event listeners to ensure a clean slate for next initialization
+                Quagga.off(); // This is the new addition
+                Quagga.initialized = false; // Reset the flag
+                console.log('Webcam Scanner: QuaggaJS parado, listeners removidos e flag resetada.');
+            }
+            // Clear the canvas and video stream
+            const video = document.querySelector('#interactive video');
+            if (video && video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                console.log('Webcam Scanner: Stream de vídeo parado.');
+            }
+            const canvas = document.querySelector('#interactive canvas');
+            if (canvas) {
+                const context = canvas.getContext('2d');
+                if (context) {
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    console.log('Webcam Scanner: Canvas limpo.');
+                }
+            }
+        }
+
+
+        // --- Lógica do Módulo de Recebimentos ---
+
+        const receiptForm = document.getElementById('receiptForm');
+        const approvedPurchaseOrderSelect = document.getElementById('approvedPurchaseOrderSelect');
+        const receiptProductSelect = document.getElementById('receiptProductSelect');
+        const receiptQuantityInput = document.getElementById('receiptQuantity');
+        const expectedQuantityHint = document.getElementById('expectedQuantityHint');
+        const receiptCostInput = document.getElementById('receiptCost');
+        const receiptInvoiceNumberInput = document.getElementById('receiptInvoiceNumber');
+        const receiptsList = document.getElementById('receiptsList');
+
+        let allReceipts = []; // Cache para recebimentos
+        let selectedPurchaseOrder = null; // Armazena o pedido de compra selecionado
+
+        /**
+         * Carrega e preenche o dropdown de pedidos de compra aprovados.
+         */
+        async function loadApprovedPurchaseOrders() {
+            console.log('Recebimentos: Carregando pedidos de compra aprovados...');
+            approvedPurchaseOrderSelect.innerHTML = '<option value="">Selecione um Pedido de Compra...</option>';
+            receiptProductSelect.innerHTML = '<option value="">Selecione um item do pedido...</option>';
+            receiptProductSelect.disabled = true;
+            receiptQuantityInput.value = '';
+            expectedQuantityHint.textContent = '';
+            receiptCostInput.value = '';
+
+            try {
+                const purchases = await getAllItems('purchases');
+                const approvedPurchases = purchases.filter(p => p.approvalStatus === 'Aprovado' && p.status !== 'Recebido'); // Apenas aprovados e não totalmente recebidos
+
+                if (approvedPurchases.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'Nenhum pedido de compra aprovado disponível.';
+                    approvedPurchaseOrderSelect.appendChild(option);
+                    return;
+                }
+
+                approvedPurchases.forEach(purchase => {
+                    // Verifica se há itens pendentes de recebimento neste pedido
+                    const hasPendingItems = purchase.items.some(item => item.quantity > (item.receivedQuantity || 0));
+                    if (hasPendingItems) {
+                        const option = document.createElement('option');
+                        option.value = purchase.id;
+                        option.textContent = `Pedido #${purchase.id} - ${purchase.supplier} (${formatDate(purchase.timestamp)}) - Status: ${purchase.status}`;
+                        approvedPurchaseOrderSelect.appendChild(option);
+                    }
+                });
+                console.log('Recebimentos: Pedidos de compra aprovados carregados:', approvedPurchases.length);
+            } catch (error) {
+                showMessage('Erro ao carregar pedidos de compra aprovados.', 'error');
+                console.error('Recebimentos: Erro ao carregar pedidos aprovados:', error);
+            }
+        }
+
+        /**
+         * Listener para quando um pedido de compra aprovado é selecionado.
+         */
+        approvedPurchaseOrderSelect.addEventListener('change', async (e) => {
+            const purchaseOrderId = parseInt(e.target.value);
+            receiptProductSelect.innerHTML = '<option value="">Selecione um item do pedido...</option>';
+            receiptProductSelect.disabled = true;
+            receiptQuantityInput.value = '';
+            expectedQuantityHint.textContent = '';
+            receiptCostInput.value = '';
+            selectedPurchaseOrder = null; // Reseta o pedido selecionado
+
+            if (isNaN(purchaseOrderId) || !purchaseOrderId) {
+                console.log('Recebimentos: Nenhum pedido de compra selecionado.');
+                return;
+            }
+
+            try {
+                const purchase = await getItemById('purchases', purchaseOrderId);
+                if (purchase) {
+                    selectedPurchaseOrder = purchase;
+                    receiptProductSelect.disabled = false;
+                    console.log('Recebimentos: Pedido de compra selecionado:', purchase);
+
+                    purchase.items.forEach((item, index) => {
+                        const received = item.receivedQuantity || 0;
+                        const remaining = item.quantity - received;
+                        if (remaining > 0) {
+                            const option = document.createElement('option');
+                            option.value = index; // Usar o índice do item no array para fácil acesso
+                            option.textContent = `${item.name} (Pendente: ${remaining} de ${item.quantity}) ${item.barcode ? `[${item.barcode}]` : ''}`;
+                            receiptProductSelect.appendChild(option);
+                        }
+                    });
+                } else {
+                    showMessage('Pedido de compra selecionado não encontrado.', 'error');
+                    console.warn('Recebimentos: Pedido de compra com ID', purchaseOrderId, 'não encontrado.');
+                }
+            } catch (error) {
+                showMessage('Erro ao carregar detalhes do pedido de compra.', 'error');
+                console.error('Recebimentos: Erro ao carregar detalhes do pedido:', error);
+            }
+        });
+
+        /**
+         * Listener para quando um item do pedido é selecionado.
+         */
+        receiptProductSelect.addEventListener('change', () => {
+            const itemIndex = parseInt(receiptProductSelect.value);
+            receiptQuantityInput.value = '';
+            expectedQuantityHint.textContent = '';
+            receiptCostInput.value = '';
+
+            if (selectedPurchaseOrder && !isNaN(itemIndex)) {
+                const item = selectedPurchaseOrder.items[itemIndex];
+                if (item) {
+                    const received = item.receivedQuantity || 0;
+                    const remaining = item.quantity - received;
+                    expectedQuantityHint.textContent = `Quantidade pendente: ${remaining} ${item.unit || ''}`;
+                    receiptCostInput.value = item.costPrice; // Preenche o custo do item do pedido
+                    receiptQuantityInput.max = remaining; // Define o máximo para o input de quantidade
+                    receiptQuantityInput.value = remaining; // Sugere a quantidade total pendente
+                    console.log('Recebimentos: Item do pedido selecionado:', item);
+                }
+            }
+        });
+
+
+        /**
+         * Lida com o envio do formulário de recebimento.
+         */
+        receiptForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('Recebimentos: Formulário de recebimento enviado.');
+
+            const purchaseOrderId = parseInt(approvedPurchaseOrderSelect.value);
+            const itemIndex = parseInt(receiptProductSelect.value);
+            const quantityReceived = parseInt(receiptQuantityInput.value);
+            const cost = parseFloat(receiptCostInput.value || 0); // Já vem do PO, mas mantido para consistência
+            const invoiceNumber = receiptInvoiceNumberInput.value;
+
+            console.log('Recebimentos: Dados do recebimento - Pedido ID:', purchaseOrderId, 'Item Index:', itemIndex, 'Qtd Recebida:', quantityReceived, 'Custo:', cost, 'NF:', invoiceNumber);
+
+            if (isNaN(purchaseOrderId) || !selectedPurchaseOrder) {
+                showMessage('Por favor, selecione um pedido de compra aprovado.', 'error');
+                console.warn('Recebimentos: Pedido de compra não selecionado.');
+                return;
+            }
+            if (isNaN(itemIndex) || !selectedPurchaseOrder.items[itemIndex]) {
+                showMessage('Por favor, selecione um item do pedido.', 'error');
+                console.warn('Recebimentos: Item do pedido não selecionado.');
+                return;
+            }
+            if (isNaN(quantityReceived) || quantityReceived <= 0) {
+                showMessage('Quantidade recebida inválida. Insira um número maior que zero.', 'error');
+                console.warn('Recebimentos: Quantidade recebida inválida:', quantityReceived);
+                return;
+            }
+
+            const itemToReceive = selectedPurchaseOrder.items[itemIndex];
+            const currentReceived = itemToReceive.receivedQuantity || 0;
+            const remainingToReceive = itemToReceive.quantity - currentReceived;
+
+            if (quantityReceived > remainingToReceive) {
+                showMessage(`Quantidade recebida (${quantityReceived}) excede a quantidade pendente (${remainingToReceive}) para ${itemToReceive.name}.`, 'error');
+                console.warn('Recebimentos: Quantidade recebida excede o pendente.');
+                return;
+            }
+
+            try {
+                // Inicia uma transação para garantir atomicidade
+                const transaction = db.transaction(['receipts', 'products', 'purchases'], 'readwrite');
+                const receiptsStore = transaction.objectStore('receipts');
+                const productStore = transaction.objectStore('products');
+                const purchasesStore = transaction.objectStore('purchases');
+
+                // 1. Atualiza o item no pedido de compra (receivedQuantity)
+                itemToReceive.receivedQuantity = (itemToReceive.receivedQuantity || 0) + quantityReceived;
+                console.log(`Recebimentos: Item "${itemToReceive.name}" no pedido #${selectedPurchaseOrder.id} - Qtd Recebida atualizada para: ${itemToReceive.receivedQuantity}`);
+
+                // 2. Verifica e atualiza o status do pedido de compra
+                const allItemsReceived = selectedPurchaseOrder.items.every(item => item.quantity <= (item.receivedQuantity || 0));
+                if (allItemsReceived) {
+                    selectedPurchaseOrder.status = 'Recebido';
+                    console.log(`Recebimentos: Pedido #${selectedPurchaseOrder.id} totalmente recebido. Status atualizado para 'Recebido'.`);
+                } else {
+                    selectedPurchaseOrder.status = 'Recebido Parcialmente';
+                    console.log(`Recebimentos: Pedido #${selectedPurchaseOrder.id} parcialmente recebido. Status atualizado para 'Recebido Parcialmente'.`);
+                }
+                purchasesStore.put(selectedPurchaseOrder); // Salva o pedido de compra atualizado
+                console.log('Recebimentos: Pedido de compra atualizado no purchasesStore.');
+
+
+                // 3. Atualiza a quantidade em estoque do produto
+                const product = await getItemById('products', itemToReceive.productId);
+                if (product) {
+                    console.log(`Recebimentos: Atualizando estoque de ${product.name}. Antes: ${product.quantity}, Recebido: ${quantityReceived}`);
+                    product.quantity += quantityReceived;
+                    product.costPrice = cost; // Atualiza o custo com o custo do recebimento
+                    productStore.put(product);
+                    console.log(`Recebimentos: Estoque de ${product.name} atualizado para: ${product.quantity}, Novo custo: ${product.costPrice}`);
+                } else {
+                    // Isso não deve acontecer se o produto já existe no banco de dados, mas é um fallback
+                    console.error('Recebimentos: Produto não encontrado no estoque ao tentar atualizar quantidade:', itemToReceive.productId);
+                    showMessage('Erro: Produto não encontrado para atualização de estoque.', 'error');
+                    // Tentar adicionar o produto se ele não existe? Depende da regra de negócio.
+                    // Por enquanto, apenas loga o erro e continua.
+                }
+
+                // 4. Adiciona o registro de recebimento
+                const receipt = {
+                    timestamp: new Date().toISOString(),
+                    purchaseOrderId: selectedPurchaseOrder.id, // Vincula ao pedido de compra
+                    productId: itemToReceive.productId,
+                    productName: itemToReceive.name,
+                    quantityReceived: quantityReceived,
+                    cost: cost,
+                    invoiceNumber: invoiceNumber,
+                    barcode: itemToReceive.barcode // Inclui o código de barras
+                };
+                receiptsStore.add(receipt);
+                console.log('Recebimentos: Registro de recebimento adicionado ao receiptsStore:', receipt);
+
+                // Espera a transação ser concluída
+                await new Promise((resolve, reject) => {
+                    transaction.oncomplete = () => {
+                        console.log('Recebimentos: Transação de recebimento concluída com sucesso.');
+                        resolve();
+                    };
+                    transaction.onerror = (event) => {
+                        console.error('Recebimentos: Erro na transação de recebimento:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+
+                showMessage(`Recebimento de ${quantityReceived} unidades de ${itemToReceive.name} registrado!`, 'success');
+                receiptForm.reset();
+                loadApprovedPurchaseOrders(); // Recarrega para refletir mudanças
+                loadReceipts(); // Recarrega o histórico
+                loadPurchases(); // Recarrega a lista de compras para ver o status atualizado
+                loadProducts(); // Recarrega o inventário
+                updateAvailableProducts(); // Atualiza cache de produtos disponíveis
+            } catch (error) {
+                showMessage('Erro ao registrar recebimento.', 'error');
+                console.error('Recebimentos: Erro geral ao registrar recebimento:', error);
+            }
+        });
+
+
+        /**
+         * Carrega e renderiza o histórico de recebimentos.
+         */
+        async function loadReceipts() {
+            console.log('Recebimentos: Carregando histórico de recebimentos...');
+            try {
+                allReceipts = await getAllItems('receipts');
+                renderReceipts(allReceipts);
+            } catch (error) {
+                showMessage('Erro ao carregar recebimentos.', 'error');
+                console.error('Recebimentos: Erro ao carregar recebimentos:', error);
+            }
+        }
+
+        /**
+         * Renderiza a lista de recebimentos.
+         * @param {Array<Object>} receiptsToDisplay - Recebimentos a serem exibidos.
+         */
+        function renderReceipts(receiptsToDisplay) {
+            console.log('Recebimentos: Renderizando lista de recebimentos. Itens:', receiptsToDisplay.length);
+            receiptsList.innerHTML = '';
+            if (receiptsToDisplay.length === 0) {
+                receiptsList.innerHTML = `<tr><td colspan="7" class="text-center text-gray-500 py-4">Nenhum recebimento registrado.</td></tr>`;
+                return;
+            }
+            // Ordena por data decrescente
+            receiptsToDisplay.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            receiptsToDisplay.forEach(receipt => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4">${formatDate(receipt.timestamp)}</td>
+                    <td class="py-2 px-4">${receipt.productName}</td>
+                    <td class="py-2 px-4">
+                        ${receipt.barcode ? `
+                            ${receipt.barcode}
+                            <i class="fas fa-barcode text-gray-600 ml-2 cursor-pointer" onclick="showBarcodeModal('${receipt.barcode}', '${receipt.productName}', 0)"></i>
+                        ` : '-'}
+                    </td>
+                    <td class="py-2 px-4">${receipt.quantityReceived}</td>
+                    <td class="py-2 px-4">${formatCurrency(receipt.cost)}</td>
+                    <td class="py-2 px-4">${receipt.invoiceNumber || '-'}</td>
+                    <td class="py-2 px-4">${receipt.purchaseOrderId ? `Pedido #${receipt.purchaseOrderId}` : '-'}</td>
+                `;
+                receiptsList.appendChild(row);
+            });
+        }
+
+        // --- Lógica do Módulo de Compras ---
+
+        const purchaseForm = document.getElementById('purchaseForm');
+        const purchaseIdInput = document.getElementById('purchaseId');
+        const purchaseSupplierInput = document.getElementById('purchaseSupplier');
+        const purchaseInvoiceNumberInput = document.getElementById('purchaseInvoiceNumber');
+        const purchaseFreightCostInput = document.getElementById('purchaseFreightCost');
+        const purchaseFreightPaidSelect = document.getElementById('purchaseFreightPaid');
+        const purchaseStatusSelect = document.getElementById('purchaseStatus');
+        const purchaseProductSearchInput = document.getElementById('purchaseProductSearch');
+        const purchaseProductQuantityInput = document.getElementById('purchaseProductQuantity');
+        const purchaseProductCostPriceInput = document.getElementById('purchaseProductCostPrice');
+        const purchaseProductBarcodeInput = document.getElementById('purchaseProductBarcode'); // Novo campo
+        const addPurchaseItemBtn = document.getElementById('addPurchaseItem');
+        const purchaseProductSuggestionsDiv = document.getElementById('purchaseProductSuggestions');
+        const purchaseItemsList = document.getElementById('purchaseItemsList');
+        const purchaseTotalSpan = document.getElementById('purchaseTotal');
+        const purchasesList = document.getElementById('purchasesList');
+        const clearPurchaseFormBtn = document.getElementById('clearPurchaseForm');
+
+        let currentPurchaseItems = []; // Itens do pedido de compra atual
+        let allPurchases = []; // Cache para pedidos de compra
+
+        /**
+         * Exibe sugestões de produtos ao digitar no campo de pesquisa de compra.
+         */
+        purchaseProductSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            purchaseProductSuggestionsDiv.innerHTML = '';
+            // Limpa os IDs e custos selecionados anteriormente
+            delete purchaseProductSearchInput.dataset.selectedProductId;
+            // purchaseProductCostPriceInput.value = ''; // Limpar o campo de custo manual ao pesquisar
+            console.log('Compras: Pesquisando produto para compra:', searchTerm);
+
+            if (searchTerm.length < 2) {
+                return;
+            }
+
+            const filtered = availableProducts.filter(p =>
+                p.name.toLowerCase().includes(searchTerm) ||
+                (p.barcode && p.barcode.toLowerCase().includes(searchTerm)) ||
+                (p.sku && p.sku.toLowerCase().includes(searchTerm))
+            );
+
+            filtered.slice(0, 5).forEach(product => {
+                const div = document.createElement('div');
+                div.className = 'p-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0';
+                div.textContent = `${product.name} (Custo: R$ ${product.costPrice ? product.costPrice.toFixed(2) : 'N/A'}) ${product.barcode ? `[${product.barcode}]` : ''}`;
+                div.dataset.productId = product.id;
+                div.dataset.productCostPrice = product.costPrice || 0; // Armazena o custo existente
+                div.dataset.productBarcode = product.barcode || ''; // Armazena o código de barras existente
+                div.addEventListener('click', () => {
+                    purchaseProductSearchInput.value = product.name;
+                    purchaseProductSearchInput.dataset.selectedProductId = product.id;
+                    // Ao selecionar, preenche o campo de custo manual com o custo do produto existente
+                    purchaseProductCostPriceInput.value = product.costPrice || '';
+                    purchaseProductBarcodeInput.value = product.barcode || ''; // Preenche o código de barras
+                    purchaseProductSuggestionsDiv.innerHTML = '';
+                    console.log('Compras: Produto selecionado da sugestão:', product.name, 'ID:', product.id, 'Custo:', product.costPrice, 'Barcode:', product.barcode);
+                });
+                purchaseProductSuggestionsDiv.appendChild(div);
+            });
+        });
+
+        /**
+         * Adiciona um item à lista de itens do pedido de compra.
+         */
+        addPurchaseItemBtn.addEventListener('click', async () => {
+            const searchTerm = purchaseProductSearchInput.value.trim();
+            const quantity = parseInt(purchaseProductQuantityInput.value);
+            const manualCostPrice = parseFloat(purchaseProductCostPriceInput.value || 0);
+            const barcodeValue = purchaseProductBarcodeInput.value.trim(); // Novo campo
+
+            console.log('Compras: Tentando adicionar item ao pedido - Termo:', searchTerm, 'Qtd:', quantity, 'Custo Manual:', manualCostPrice, 'Barcode:', barcodeValue);
+
+            if (isNaN(quantity) || quantity <= 0) {
+                showMessage('Quantidade inválida para o item de compra. Insira um número maior que zero.', 'error');
+                return;
+            }
+            if (!searchTerm) {
+                showMessage('Por favor, digite o nome do produto ou selecione um da lista.', 'error');
+                return;
+            }
+            if (barcodeValue && !isValidEAN13(barcodeValue)) {
+                showMessage('Código de Barras inválido. Deve conter 13 dígitos numéricos e ser um EAN-13 válido.', 'error');
+                return;
+            }
+
+            let productToAdd = null;
+            let isNewProduct = false;
+
+            // Tenta encontrar um produto existente primeiro
+            const selectedProductId = parseInt(purchaseProductSearchInput.dataset.selectedProductId);
+            // Verifica se o produto selecionado da sugestão ainda corresponde ao termo de busca
+            const foundExisting = availableProducts.find(p => p.id === selectedProductId && p.name.toLowerCase() === searchTerm.toLowerCase());
+
+            if (foundExisting) {
+                productToAdd = foundExisting;
+                isNewProduct = false;
+                // Se um custo manual foi inserido, ele sobrescreve o custo existente para esta compra
+                productToAdd.costPrice = manualCostPrice > 0 ? manualCostPrice : productToAdd.costPrice;
+                // Se um barcode manual foi inserido, ele sobrescreve o barcode existente para esta compra
+                productToAdd.barcode = barcodeValue || productToAdd.barcode;
+                console.log('Compras: Produto existente encontrado:', productToAdd.name, 'Custo usado:', productToAdd.costPrice, 'Barcode usado:', productToAdd.barcode);
+            } else {
+                // Se não encontrou um existente ou o termo não corresponde, trata como novo produto
+                if (isNaN(manualCostPrice) || manualCostPrice <= 0) {
+                    showMessage('Para um novo produto, o Custo Unitário deve ser maior que zero.', 'error');
+                    return;
+                }
+                if (!barcodeValue || !isValidEAN13(barcodeValue)) {
+                    showMessage('Para um novo produto, o Código de Barras (EAN-13) é obrigatório e válido.', 'error');
+                    return;
+                }
+                productToAdd = {
+                    // Atribui um ID temporário para rastreamento interno antes do IndexedDB atribuir um real
+                    tempId: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    name: searchTerm,
+                    costPrice: manualCostPrice,
+                    barcode: barcodeValue, // Novo produto, barcode obrigatório
+                    quantity: 0, // Novos produtos começam com 0 quantidade no inventário, será atualizado na aprovação
+                    unit: 'UN', // Unidade padrão para novos produtos, pode ser expandido
+                    category: 'Geral', // Local/ Prateleira padrão para novos produtos, pode ser expandido
+                    supplier: purchaseSupplierInput.value || 'Desconhecido', // Usa fornecedor do formulário ou padrão
+                    sku: '', // Pode ser adicionado depois
+                };
+                isNewProduct = true;
+                console.log('Compras: Tratado como novo produto:', productToAdd.name, 'Custo:', productToAdd.costPrice, 'Barcode:', productToAdd.barcode);
+            }
+
+            // Verifica se o item já está na lista de itens da compra atual
+            const existingItemIndex = currentPurchaseItems.findIndex(item =>
+                isNewProduct ? item.tempId === productToAdd.tempId : item.productId === productToAdd.id
+            );
+
+            if (existingItemIndex > -1) {
+                currentPurchaseItems[existingItemIndex].quantity += quantity;
+                currentPurchaseItems[existingItemIndex].total = currentPurchaseItems[existingItemIndex].quantity * productToAdd.costPrice;
+                showMessage(`Quantidade de ${productToAdd.name} atualizada no pedido!`, 'info');
+                console.log('Compras: Quantidade do item atualizada no pedido:', currentPurchaseItems[existingItemIndex]);
+            } else {
+                const newPurchaseItem = {
+                    productId: isNewProduct ? null : productToAdd.id, // Null para novos produtos até serem aprovados
+                    tempId: isNewProduct ? productToAdd.tempId : null, // ID temporário para novos produtos
+                    name: productToAdd.name,
+                    quantity: quantity,
+                    costPrice: productToAdd.costPrice,
+                    total: quantity * productToAdd.costPrice,
+                    isNewProduct: isNewProduct,
+                    receivedQuantity: 0, // Inicializa a quantidade recebida
+                    // Armazena outros detalhes para novos produtos se necessário para registro
+                    unit: productToAdd.unit,
+                    category: productToAdd.category,
+                    supplier: productToAdd.supplier,
+                    sku: productToAdd.sku,
+                    barcode: productToAdd.barcode // Inclui o código de barras
+                };
+                currentPurchaseItems.push(newPurchaseItem);
+                showMessage(`${productToAdd.name} adicionado ao pedido de compra!`, 'success');
+                console.log('Compras: Novo item adicionado ao pedido:', newPurchaseItem);
+            }
+            renderPurchaseItems();
+            purchaseProductSearchInput.value = '';
+            purchaseProductQuantityInput.value = 1;
+            purchaseProductCostPriceInput.value = ''; // Limpa o campo de custo manual
+            purchaseProductBarcodeInput.value = ''; // Limpa o campo de código de barras
+            delete purchaseProductSearchInput.dataset.selectedProductId; // Limpa o ID selecionado
+            // delete purchaseProductSearchInput.dataset.selectedProductCostPrice; // Não é mais necessário
+            // delete purchaseProductSearchInput.dataset.selectedProductBarcode; // Não é mais necessário
+        });
+
+        /**
+         * Remove um item da lista de itens do pedido de compra.
+         * @param {string} itemId - ID do produto (ou tempId para novos) a ser removido.
+         * @param {boolean} isNew - Indica se é um novo produto.
+         */
+        function removePurchaseItem(itemId, isNew) {
+            console.log('Compras: Removendo item do pedido com ID:', itemId, 'É novo:', isNew);
+            if (isNew) {
+                currentPurchaseItems = currentPurchaseItems.filter(item => item.tempId !== itemId);
+            } else {
+                currentPurchaseItems = currentPurchaseItems.filter(item => item.productId !== itemId);
+            }
+            renderPurchaseItems();
+            showMessage('Item removido do pedido de compra.');
+        }
+
+        /**
+         * Renderiza os itens do pedido de compra atual e atualiza o total.
+         */
+        function renderPurchaseItems() {
+            console.log('Compras: Renderizando itens do pedido. Itens:', currentPurchaseItems.length);
+            purchaseItemsList.innerHTML = '';
+            let totalPurchase = 0;
+
+            if (currentPurchaseItems.length === 0) {
+                purchaseItemsList.innerHTML = `<tr><td colspan="7" class="text-center text-gray-500 py-4">Nenhum item adicionado.</td></tr>`;
+                purchaseTotalSpan.textContent = formatCurrency(0);
+                return;
+            }
+
+            currentPurchaseItems.forEach(item => {
+                const row = document.createElement('tr');
+                // Use o ID correto para a função de remoção (tempId para novos, productId para existentes)
+                const itemIdForRemoval = item.isNewProduct ? `'${item.tempId}'` : item.productId;
+                const itemIsNewFlag = item.isNewProduct ? 'true' : 'false';
+
+                row.innerHTML = `
+                    <td class="py-2 px-4">${item.name}</td>
+                    <td class="py-2 px-4">
+                        ${item.barcode ? `
+                            ${item.barcode}
+                            <i class="fas fa-barcode text-gray-600 ml-2 cursor-pointer" onclick="showBarcodeModal('${item.barcode}', '${item.name}', ${item.costPrice})"></i>
+                        ` : '-'}
+                    </td>
+                    <td class="py-2 px-4">${item.quantity}</td>
+                    <td class="py-2 px-4">${formatCurrency(item.costPrice)}</td>
+                    <td class="py-2 px-4">${formatCurrency(item.total)}</td>
+                    <td class="py-2 px-4">${item.isNewProduct ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Novo</span>' : 'Existente'}</td>
+                    <td class="py-2 px-4">
+                        <button class="btn btn-danger btn-sm" onclick="removePurchaseItem(${itemIdForRemoval}, ${itemIsNewFlag})">Remover</button>
+                    </td>
+                `;
+                purchaseItemsList.appendChild(row);
+                totalPurchase += item.total;
+            });
+            purchaseTotalSpan.textContent = formatCurrency(totalPurchase);
+        }
+
+        /**
+         * Lida com o envio do formulário de compra (novo/edição).
+         */
+        purchaseForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('Compras: Formulário de compra enviado.');
+
+            if (currentPurchaseItems.length === 0) {
+                showMessage('Adicione itens ao pedido de compra antes de salvar.', 'error');
+                console.warn('Compras: Tentativa de salvar pedido sem itens.');
+                return;
+            }
+
+            const totalItemsCost = currentPurchaseItems.reduce((sum, item) => sum + item.total, 0);
+            const freightCost = parseFloat(purchaseFreightCostInput.value || 0);
+            const totalPurchase = totalItemsCost + freightCost;
+
+            // Verifica se há algum produto novo no pedido
+            const requiresApproval = currentPurchaseItems.some(item => item.isNewProduct);
+
+            const purchase = {
+                timestamp: new Date().toISOString(),
+                supplier: purchaseSupplierInput.value,
+                invoiceNumber: purchaseInvoiceNumberInput.value,
+                items: currentPurchaseItems, // Itens podem conter `isNewProduct` e `tempId`
+                total: totalPurchase,
+                freightCost: freightCost,
+                freightPaid: purchaseFreightPaidSelect.value === 'true',
+                status: 'Pendente', // Novo pedido sempre começa como Pendente
+                approvalStatus: requiresApproval ? 'Pendente' : 'Aprovado' // Define status de aprovação
+            };
+
+            console.log('Compras: Dados do pedido de compra a salvar:', purchase);
+
+            try {
+                if (purchaseIdInput.value) {
+                    // Edição de pedido de compra existente
+                    purchase.id = parseInt(purchaseIdInput.value);
+                    // Se o pedido já foi aprovado, não permitir edição ou apenas de certos campos
+                    const existingPurchase = await getItemById('purchases', purchase.id);
+                    if (existingPurchase && existingPurchase.approvalStatus === 'Aprovado') {
+                        showMessage('Não é possível editar um pedido de compra já aprovado.', 'info');
+                        console.warn('Compras: Tentativa de editar pedido aprovado.');
+                        return;
+                    }
+                    await updateItem('purchases', purchase);
+                    showMessage('Pedido de compra atualizado com sucesso!', 'success');
+                } else {
+                    // Novo pedido de compra
+                    await addItem('purchases', purchase);
+                    showMessage('Pedido de compra salvo com sucesso!', 'success');
+                }
+                purchaseForm.reset();
+                purchaseIdInput.value = '';
+                currentPurchaseItems = []; // Limpa os itens do formulário
+                renderPurchaseItems();
+                loadPurchases(); // Recarrega a lista de pedidos
+                loadPendingPurchases(); // Recarrega a lista de aprovações
+            } catch (error) {
+                showMessage('Erro ao salvar pedido de compra.', 'error');
+                console.error('Compras: Erro ao salvar pedido de compra:', error);
+            }
+        });
+
+        /**
+         * Carrega os pedidos de compra do IndexedDB e renderiza a lista.
+         */
+        async function loadPurchases() {
+            console.log('Compras: Carregando pedidos de compra...');
+            try {
+                allPurchases = await getAllItems('purchases');
+                renderPurchases(allPurchases);
+            } catch (error) {
+                showMessage('Erro ao carregar pedidos de compra.', 'error');
+                console.error('Compras: Erro ao carregar pedidos de compra:', error);
+            }
+        }
+
+        /**
+         * Renderiza a lista de pedidos de compra.
+         * @param {Array<Object>} purchasesToDisplay - Pedidos a serem exibidos.
+         */
+        function renderPurchases(purchasesToDisplay) {
+            console.log('Compras: Renderizando lista de pedidos de compra. Itens:', purchasesToDisplay.length);
+            purchasesList.innerHTML = '';
+            if (purchasesToDisplay.length === 0) {
+                purchasesList.innerHTML = `<tr><td colspan="8" class="text-center text-gray-500 py-4">Nenhum pedido de compra registrado.</td></tr>`;
+                return;
+            }
+            // Ordena por data decrescente
+            purchasesToDisplay.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            purchasesToDisplay.forEach(purchase => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4">${formatDate(purchase.timestamp)}</td>
+                    <td class="py-2 px-4">${purchase.supplier}</td>
+                    <td class="py-2 px-4">${purchase.invoiceNumber || '-'}</td>
+                    <td class="py-2 px-4">${formatCurrency(purchase.freightCost)} (${purchase.freightPaid ? 'Pago' : 'A Pagar'})</td>
+                    <td class="py-2 px-4">${formatCurrency(purchase.total)}</td>
+                    <td class="py-2 px-4">${purchase.status}</td>
+                    <td class="py-2 px-4">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${purchase.approvalStatus === 'Aprovado' ? 'bg-green-100 text-green-800' : purchase.approvalStatus === 'Pendente' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">
+                            ${purchase.approvalStatus}
+                        </span>
+                    </td>
+                    <td class="py-2 px-4">
+                        ${purchase.approvalStatus !== 'Aprovado' ? `<button class="btn btn-secondary btn-sm mr-2" onclick="editPurchase(${purchase.id})">Editar</button>` : ''}
+                        <button class="btn btn-danger btn-sm" onclick="deletePurchase(${purchase.id})">Excluir</button>
+                    </td>
+                `;
+                purchasesList.appendChild(row);
+            });
+        }
+
+        /**
+         * Preenche o formulário de compra para edição.
+         * @param {number} id - ID do pedido de compra a ser editado.
+         */
+        async function editPurchase(id) {
+            console.log('Compras: Editando pedido de compra com ID:', id);
+            try {
+                const purchase = await getItemById('purchases', id);
+                if (purchase) {
+                    if (purchase.approvalStatus === 'Aprovado') {
+                        showMessage('Pedidos aprovados não podem ser editados diretamente por aqui.', 'info');
+                        console.warn('Compras: Tentativa de editar pedido aprovado.');
+                        return;
+                    }
+                    purchaseIdInput.value = purchase.id;
+                    purchaseSupplierInput.value = purchase.supplier;
+                    purchaseInvoiceNumberInput.value = purchase.invoiceNumber;
+                    purchaseFreightCostInput.value = purchase.freightCost;
+                    purchaseFreightPaidSelect.value = String(purchase.freightPaid);
+                    purchaseStatusSelect.value = purchase.status;
+                    currentPurchaseItems = purchase.items || []; // Carrega os itens existentes
+                    renderPurchaseItems();
+                    showMessage(`Editando pedido de compra: ${purchase.supplier}`);
+                    // Scroll to form
+                    purchaseForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    showMessage('Pedido de compra não encontrado para edição.', 'error');
+                    console.warn('Compras: Pedido de compra com ID', id, 'não encontrado para edição.');
+                }
+            } catch (error) {
+                showMessage('Erro ao carregar pedido de compra para edição.', 'error');
+                console.error('Compras: Erro ao carregar pedido de compra para edição:', error);
+            }
+        }
+
+        /**
+         * Deleta um pedido de compra.
+         * @param {number} id - ID do pedido de compra a ser deletado.
+         */
+        async function deletePurchase(id) {
+            const confirmed = await showCustomConfirm('Tem certeza que deseja excluir este pedido de compra?', 'Excluir Pedido de Compra');
+            if (confirmed) {
+                console.log('Compras: Deletando pedido de compra com ID:', id);
+                try {
+                    await deleteItem('purchases', id);
+                    showMessage('Pedido de compra excluído com sucesso!', 'success');
+                    loadPurchases();
+                    loadPendingPurchases(); // Atualiza a lista de aprovações
+                } catch (error) {
+                    showMessage('Erro ao excluir pedido de compra.', 'error');
+                    console.error('Compras: Erro ao excluir pedido de compra:', error);
+                }
+            } else {
+                console.log('Compras: Exclusão de pedido de compra cancelada.');
+            }
+        }
+
+        // Limpar formulário de compra
+        clearPurchaseFormBtn.addEventListener('click', () => {
+            purchaseForm.reset();
+            purchaseIdInput.value = '';
+            currentPurchaseItems = [];
+            renderPurchaseItems();
+            showMessage('Formulário de compra limpo.');
+            console.log('Compras: Formulário de compra limpo.');
+        });
+
+        // --- Lógica do Módulo de Aprovações ---
+
+        const pendingPurchasesList = document.getElementById('pendingPurchasesList');
+
+        /**
+         * Carrega os pedidos de compra pendentes de aprovação.
+         */
+        async function loadPendingPurchases() {
+            console.log('Aprovações: Carregando pedidos pendentes de aprovação...');
+            try {
+                const all = await getAllItems('purchases');
+                const pending = all.filter(p => p.approvalStatus === 'Pendente');
+                renderPendingPurchases(pending);
+            } catch (error) {
+                showMessage('Erro ao carregar pedidos pendentes de aprovação.', 'error');
+                console.error('Aprovações: Erro ao carregar pedidos pendentes:', error);
+            }
+        }
+
+        /**
+         * Renderiza a lista de pedidos pendentes de aprovação.
+         * @param {Array<Object>} pendingPurchases - Pedidos pendentes a serem exibidos.
+         */
+        function renderPendingPurchases(pendingPurchases) {
+            console.log('Aprovações: Renderizando lista de pedidos pendentes. Itens:', pendingPurchases.length);
+            pendingPurchasesList.innerHTML = '';
+            if (pendingPurchases.length === 0) {
+                pendingPurchasesList.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">Nenhum pedido pendente de aprovação.</td></tr>`;
+                return;
+            }
+
+            pendingPurchases.forEach(purchase => {
+                const newItemsCount = purchase.items.filter(item => item.isNewProduct).length;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4">${formatDate(purchase.timestamp)}</td>
+                    <td class="py-2 px-4">${purchase.supplier}</td>
+                    <td class="py-2 px-4">${purchase.invoiceNumber || '-'}</td>
+                    <td class="py-2 px-4">${formatCurrency(purchase.total)}</td>
+                    <td class="py-2 px-4">${newItemsCount > 0 ? `${newItemsCount} item(s) novo(s)` : 'Nenhum'}</td>
+                    <td class="py-2 px-4">
+                        <button class="btn btn-primary btn-sm mr-2" onclick="approvePurchase(${purchase.id})">Aprovar</button>
+                        <button class="btn btn-danger btn-sm" onclick="rejectPurchase(${purchase.id})">Rejeitar</button>
+                    </td>
+                `;
+                pendingPurchasesList.appendChild(row);
+            });
+        }
+
+        /**
+         * Aprova um pedido de compra, adicionando novos produtos ao estoque e atualizando quantidades.
+         * @param {number} purchaseId - ID do pedido de compra a ser aprovado.
+         */
+        async function approvePurchase(purchaseId) {
+            console.log('Aprovações: Função approvePurchase iniciada para o pedido ID:', purchaseId);
+            const confirmed = await showCustomConfirm('Tem certeza que deseja APROVAR este pedido de compra? Isso adicionará novos produtos ao estoque.', 'Aprovar Pedido de Compra');
+            if (!confirmed) {
+                console.log('Aprovações: Aprovação cancelada pelo usuário.');
+                return;
+            }
+
+            try {
+                const purchase = await getItemById('purchases', purchaseId);
+                if (!purchase) {
+                    showMessage('Pedido de compra não encontrado para aprovação.', 'error');
+                    console.warn('Aprovações: Pedido com ID', purchaseId, 'não encontrado para aprovação.');
+                    return;
+                }
+                if (purchase.approvalStatus !== 'Pendente') {
+                    showMessage('Este pedido já foi processado.', 'info');
+                    console.warn('Aprovações: Tentativa de aprovar pedido que não está pendente. Status atual:', purchase.approvalStatus);
+                    return;
+                }
+                console.log('Aprovações: Pedido encontrado e pendente. Iniciando transação IndexedDB...');
+
+                const transaction = db.transaction(['purchases', 'products'], 'readwrite');
+                const purchasesStore = transaction.objectStore('purchases');
+                const productsStore = transaction.objectStore('products');
+
+                // Processa cada item do pedido
+                for (let i = 0; i < purchase.items.length; i++) {
+                    let item = purchase.items[i];
+                    console.log(`Aprovações: Processando item: ${item.name} (isNewProduct: ${item.isNewProduct})`);
+                    if (item.isNewProduct) {
+                        // Adiciona o novo produto ao estoque
+                        const newProduct = {
+                            name: item.name,
+                            sku: item.sku || '',
+                            barcode: item.barcode || '', // Inclui o código de barras
+                            price: item.costPrice * 1.5, // Preço de venda sugerido (ex: 50% de margem)
+                            costPrice: item.costPrice,
+                            quantity: 0, // Novos produtos começam com 0 quantidade no inventário, será atualizado no recebimento
+                            unit: item.unit || 'UN',
+                            category: item.category || 'Geral',
+                            supplier: item.supplier || purchase.supplier // Usa fornecedor do item ou do pedido
+                        };
+                        console.log('Aprovações: Adicionando novo produto ao estoque:', newProduct);
+                        const addRequest = productsStore.add(newProduct);
+                        await new Promise((resolve, reject) => {
+                            addRequest.onsuccess = (event) => {
+                                // Atualiza o item no pedido com o ID real do produto recém-criado
+                                item.productId = event.target.result;
+                                item.isNewProduct = false; // Não é mais um "novo" produto temporário
+                                delete item.tempId; // Remove o ID temporário
+                                console.log(`Aprovações: Novo produto "${item.name}" adicionado ao estoque com ID: ${item.productId}`);
+                                resolve();
+                            };
+                            addRequest.onerror = (event) => {
+                                console.error(`Aprovações: Erro ao adicionar novo produto "${item.name}" ao estoque:`, event.target.error);
+                                reject(event.target.error);
+                            };
+                        });
+                    } else {
+                        // Para produtos existentes, apenas garante que o `receivedQuantity` existe
+                        // A quantidade em estoque será atualizada no recebimento, não na aprovação
+                        item.receivedQuantity = item.receivedQuantity || 0;
+                    }
+                }
+
+                // Atualiza o status do pedido de compra para 'Aprovado'
+                purchase.approvalStatus = 'Aprovado';
+                purchase.status = 'Aprovado'; // O status geral também é "Aprovado" agora
+                console.log(`Aprovações: Atualizando status do pedido ${purchaseId} para 'Aprovado'.`);
+                purchasesStore.put(purchase);
+
+
+                await new Promise((resolve, reject) => {
+                    transaction.oncomplete = () => {
+                        console.log('Aprovações: Transação de aprovação concluída com sucesso.');
+                        resolve();
+                    };
+                    transaction.onerror = (event) => {
+                        console.error('Aprovações: Erro na transação de aprovação:', event.target.error);
+                        reject(event.target.error);
+                    };
+                });
+
+                showMessage(`Pedido de compra ${purchaseId} aprovado e estoque atualizado!`, 'success');
+                loadPendingPurchases(); // Recarrega a lista de pendentes
+                loadPurchases(); // Recarrega a lista geral de compras
+                loadApprovedPurchaseOrders(); // Recarrega a lista de pedidos aprovados para recebimento
+                updateAvailableProducts(); // Atualiza cache de produtos disponíveis
+                console.log('Aprovações: approvePurchase finalizada com sucesso.');
+            } catch (error) {
+                showMessage('Erro ao aprovar pedido de compra.', 'error');
+                console.error('Aprovações: Erro geral ao aprovar pedido:', error);
+            }
+        }
+
+        /**
+         * Rejeita um pedido de compra.
+         * @param {number} purchaseId - ID do pedido de compra a ser rejeitado.
+         */
+        async function rejectPurchase(purchaseId) {
+            console.log('Aprovações: Função rejectPurchase iniciada para o pedido ID:', purchaseId);
+            const confirmed = await showCustomConfirm('Tem certeza que deseja REJEITAR este pedido de compra? Esta ação não pode ser desfeita.', 'Rejeitar Pedido de Compra');
+            if (!confirmed) {
+                console.log('Aprovações: Rejeição cancelada pelo usuário.');
+                return;
+            }
+
+            try {
+                const purchase = await getItemById('purchases', purchaseId);
+                if (!purchase) {
+                    showMessage('Pedido de compra não encontrado para rejeição.', 'error');
+                    console.warn('Aprovações: Pedido com ID', purchaseId, 'não encontrado para rejeição.');
+                    return;
+                }
+                if (purchase.approvalStatus !== 'Pendente') {
+                    showMessage('Este pedido já foi processado.', 'info');
+                    console.warn('Aprovações: Tentativa de rejeitar pedido que não está pendente. Status atual:', purchase.approvalStatus);
+                    return;
+                }
+
+                purchase.approvalStatus = 'Rejeitado';
+                purchase.status = 'Cancelado'; // Altera o status geral para Cancelado se rejeitado
+                console.log(`Aprovações: Atualizando status do pedido ${purchaseId} para 'Rejeitado' e 'Cancelado'.`);
+                await updateItem('purchases', purchase);
+                showMessage(`Pedido de compra ${purchaseId} rejeitado.`, 'info');
+                loadPendingPurchases(); // Recarrega a lista de pendentes
+                loadPurchases(); // Recarrega a lista geral de compras
+                loadApprovedPurchaseOrders(); // Atualiza a lista de pedidos aprovados
+                console.log('Aprovações: rejectPurchase finalizada com sucesso.');
+            } catch (error) {
+                showMessage('Erro ao rejeitar pedido de compra.', 'error');
+                console.error('Aprovações: Erro ao rejeitar pedido:', error);
+            }
+        }
+
+
+        // --- Lógica do Módulo de Relatórios ---
+
+        document.getElementById('exportInventoryCSV').addEventListener('click', async () => {
+            console.log('Relatórios: Exportando relatório de estoque...');
+            try {
+                const products = await getAllItems('products');
+                const headers = ['id', 'name', 'sku', 'barcode', 'price', 'costPrice', 'quantity', 'unit', 'category', 'supplier', 'ncm', 'cest', 'cfop'];
+                const csv = convertToCSV(products, headers);
+                downloadFile(csv, 'relatorio_estoque.csv', 'text/csv;charset=utf-8;');
+                showMessage('Relatório de estoque exportado para CSV.', 'success');
+            } catch (error) {
+                showMessage('Erro ao exportar relatório de estoque.', 'error');
+                console.error('Relatórios: Erro ao exportar relatório de estoque:', error);
+            }
+        });
+
+        document.getElementById('exportSalesCSV').addEventListener('click', async () => {
+            console.log('Relatórios: Exportando relatório de vendas...');
+            try {
+                const sales = await getAllItems('sales');
+                const headers = ['id', 'timestamp', 'total', 'paymentMethod', 'items'];
+                const csv = convertToCSV(sales, headers);
+                downloadFile(csv, 'relatorio_vendas.csv', 'text/csv;charset=utf-8;');
+                showMessage('Relatório de vendas exportado para CSV.', 'success');
+            } catch (error) {
+                showMessage('Erro ao exportar relatório de vendas.', 'error');
+                console.error('Relatórios: Erro ao exportar relatório de vendas:', error);
+            }
+        });
+
+        document.getElementById('exportReceiptsCSV').addEventListener('click', async () => {
+            console.log('Relatórios: Exportando relatório de recebimentos...');
+            try {
+                const receipts = await getAllItems('receipts');
+                const headers = ['id', 'timestamp', 'productId', 'productName', 'barcode', 'quantityReceived', 'cost', 'invoiceNumber', 'purchaseOrderId']; // Adicionado barcode
+                const csv = convertToCSV(receipts, headers);
+                downloadFile(csv, 'relatorio_recebimentos.csv', 'text/csv;charset=utf-8;');
+                showMessage('Relatório de recebimentos exportado para CSV.', 'success');
+            } catch (error) {
+                showMessage('Erro ao exportar relatório de recebimentos.', 'error');
+                console.error('Relatórios: Erro ao exportar relatório de recebimentos:', error);
+            }
+        });
+
+        document.getElementById('exportPurchasesCSV').addEventListener('click', async () => {
+            console.log('Relatórios: Exportando relatório de compras...');
+            try {
+                const purchases = await await getAllItems('purchases');
+                const headers = ['id', 'timestamp', 'supplier', 'invoiceNumber', 'total', 'freightCost', 'freightPaid', 'status', 'approvalStatus', 'items'];
+                const csv = convertToCSV(purchases, headers);
+                downloadFile(csv, 'relatorio_compras.csv', 'text/csv;charset=utf-8;');
+                showMessage('Relatório de compras exportado para CSV.', 'success');
+            } catch (error) {
+                showMessage('Erro ao exportar relatório de compras.', 'error');
+                console.error('Relatórios: Erro ao exportar relatório de compras:', error);
+            }
+        });
+
+        document.getElementById('exportProductCadastroCSV').addEventListener('click', async () => {
+            console.log('Relatórios: Exportando relatório de cadastro de produtos...');
+            try {
+                const products = await getAllItems('products');
+                const headers = ['id', 'name', 'sku', 'barcode', 'price', 'costPrice', 'quantity', 'unit', 'category', 'supplier', 'ncm', 'cest', 'cfop'];
+                const csv = convertToCSV(products, headers);
+                downloadFile(csv, 'relatorio_cadastro_produtos.csv', 'text/csv;charset=utf-8;');
+                showMessage('Relatório de cadastro de produtos exportado para CSV.', 'success');
+            } catch (error) {
+                showMessage('Erro ao exportar relatório de cadastro de produtos.', 'error');
+                console.error('Relatórios: Erro ao exportar relatório de cadastro de produtos:', error);
+            }
+        });
+
+        // --- Lógica do Relatório de Contagem Cega (NOVO) ---
+        const generateBlindCountReportBtn = document.getElementById('generateBlindCountReportBtn');
+        const blindCountReportResultsDiv = document.getElementById('blindCountReportResults');
+        const blindCountTableBody = document.getElementById('blindCountTableBody');
+        const confrontBlindCountBtn = document.getElementById('confrontBlindCountBtn');
+        const resetBlindCountBtn = document.getElementById('resetBlindCountBtn');
+        const exportBlindCountCSVBtn = document.getElementById('exportBlindCountCSV');
+
+        let blindCountProducts = []; // Para armazenar os produtos e suas quantidades do sistema para confronto
+
+        generateBlindCountReportBtn.addEventListener('click', async () => {
+            console.log('Relatórios: Gerando relatório de contagem cega...');
+            try {
+                blindCountProducts = await getAllItems('products');
+                renderBlindCountReport(blindCountProducts);
+                blindCountReportResultsDiv.classList.remove('hidden');
+                exportBlindCountCSVBtn.classList.remove('hidden'); // Mostra o botão de exportar CSV
+                showMessage('Relatório de contagem cega gerado. Insira as contagens físicas.', 'info');
+            } catch (error) {
+                showMessage('Erro ao gerar relatório de contagem cega.', 'error');
+                console.error('Relatórios: Erro ao gerar relatório de contagem cega:', error);
+            }
+        });
+
+        function renderBlindCountReport(products) {
+            console.log('Relatórios: Renderizando tabela de contagem cega. Itens:', products.length);
+            blindCountTableBody.innerHTML = '';
+            if (products.length === 0) {
+                blindCountTableBody.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">Nenhum produto para contagem.</td></tr>`;
+                return;
+            }
+
+            products.forEach(product => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4">${product.name}</td>
+                    <td class="py-2 px-4">${product.sku || '-'}</td>
+                    <td class="py-2 px-4">${product.quantity}</td>
+                    <td class="py-2 px-4">
+                        <input type="number" class="form-input w-24 blind-count-input" data-product-id="${product.id}" min="0" value="">
+                    </td>
+                    <td class="py-2 px-4 divergence-diff"></td>
+                    <td class="py-2 px-4 divergence-percent"></td>
+                `;
+                blindCountTableBody.appendChild(row);
+            });
+        }
+
+        confrontBlindCountBtn.addEventListener('click', () => {
+            console.log('Relatórios: Confrontando contagem cega...');
+            const inputs = blindCountTableBody.querySelectorAll('.blind-count-input');
+            inputs.forEach(input => {
+                const productId = parseInt(input.dataset.productId);
+                const physicalCount = parseInt(input.value || 0);
+                const product = blindCountProducts.find(p => p.id === productId);
+
+                if (product) {
+                    const systemQuantity = product.quantity;
+                    const divergence = physicalCount - systemQuantity;
+                    const percentageDivergence = systemQuantity === 0 ? (physicalCount === 0 ? 0 : 100) : (divergence / systemQuantity) * 100;
+
+                    const row = input.closest('tr');
+                    row.querySelector('.divergence-diff').textContent = divergence;
+                    row.querySelector('.divergence-percent').textContent = `${percentageDivergence.toFixed(2)}%`;
+
+                    // Opcional: Adicionar classe para destacar divergências
+                    if (divergence !== 0) {
+                        row.classList.add('bg-red-50'); // Exemplo de destaque
+                    } else {
+                        row.classList.remove('bg-red-50');
+                    }
+                }
+            });
+            showMessage('Contagem confrontada com sucesso!', 'success');
+        });
+
+        resetBlindCountBtn.addEventListener('click', () => {
+            console.log('Relatórios: Reiniciando contagem cega...');
+            blindCountReportResultsDiv.classList.add('hidden');
+            exportBlindCountCSVBtn.classList.add('hidden');
+            blindCountTableBody.innerHTML = '';
+            blindCountProducts = [];
+            showMessage('Relatório de contagem cega reiniciado.');
+        });
+
+        exportBlindCountCSVBtn.addEventListener('click', () => {
+            console.log('Relatórios: Exportando relatório de contagem cega para CSV...');
+            const dataToExport = [];
+            const inputs = blindCountTableBody.querySelectorAll('.blind-count-input');
+
+            inputs.forEach(input => {
+                const productId = parseInt(input.dataset.productId);
+                const physicalCount = parseInt(input.value || 0);
+                const product = blindCountProducts.find(p => p.id === productId);
+
+                if (product) {
+                    const systemQuantity = product.quantity;
+                    const divergence = physicalCount - systemQuantity;
+                    const percentageDivergence = systemQuantity === 0 ? (physicalCount === 0 ? 0 : 100) : (divergence / systemQuantity) * 100;
+
+                    dataToExport.push({
+                        'Produto': product.name,
+                        'SKU': product.sku || '-',
+                        'Qtd Sistema': systemQuantity,
+                        'Contagem Física': physicalCount,
+                        'Divergência': divergence,
+                        '% Divergência': percentageDivergence.toFixed(2) + '%'
+                    });
+                }
+            });
+
+            if (dataToExport.length > 0) {
+                const headers = ['Produto', 'SKU', 'Qtd Sistema', 'Contagem Física', 'Divergência', '% Divergência'];
+                const csv = convertToCSV(dataToExport, headers);
+                downloadFile(csv, 'relatorio_contagem_cega.csv', 'text/csv;charset=utf-8;');
+                showMessage('Relatório de contagem cega exportado para CSV.', 'success');
+            } else {
+                showMessage('Nenhum dado para exportar no relatório de contagem cega.', 'info');
+            }
+        });
+
+        // --- Lógica do Relatório de Códigos de Barras (NOVO) ---
+        const supermarketNameInput = document.getElementById('supermarketNameInput');
+        const generateBarcodeLabelsBtn = document.getElementById('generateBarcodeLabelsBtn');
+        const barcodePrintArea = document.getElementById('barcodePrintArea');
+        const barcodeLabelsContainer = document.getElementById('barcodeLabelsContainer');
+        const printBarcodeLabelsBtn = document.getElementById('printBarcodeLabelsBtn');
+        const closeBarcodeLabelsBtn = document.getElementById('closeBarcodeLabelsBtn');
+
+        generateBarcodeLabelsBtn.addEventListener('click', async () => {
+            console.log('Relatórios: Gerando etiquetas de código de barras...');
+            const supermarketName = supermarketNameInput.value.trim();
+            if (!supermarketName) {
+                showMessage('Por favor, insira o nome do supermercado para gerar as etiquetas.', 'error');
+                return;
+            }
+
+            try {
+                const products = await getAllItems('products');
+                const productsWithBarcodes = products.filter(p => p.barcode && isValidEAN13(p.barcode));
+
+                if (productsWithBarcodes.length === 0) {
+                    showMessage('Nenhum produto com código de barras EAN-13 válido encontrado para gerar etiquetas.', 'info');
+                    return;
+                }
+
+                barcodeLabelsContainer.innerHTML = ''; // Limpa etiquetas anteriores
+
+                productsWithBarcodes.forEach(product => {
+                    const labelDiv = document.createElement('div');
+                    labelDiv.className = 'barcode-label';
+
+                    // Create an SVG element for JsBarcode to render into for each label
+                    const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                    svgElement.setAttribute('class', 'barcode-svg-label'); // Add a class for potential styling if needed
+
+                    // Render barcode into the SVG element
+                    JsBarcode(svgElement, product.barcode, {
+                        format: "EAN13",
+                        displayValue: true,
+                        width: 1.5, // Adjust width for label size
+                        height: 50, // Adjust height for label size
+                        background: "transparent",
+                        lineColor: "#000",
+                        textMargin: 3,
+                        fontSize: 12
+                    });
+
+                    labelDiv.innerHTML = `
+                        <div class="supermarket-name">${supermarketName}</div>
+                        <div class="product-name">${product.name}</div>
+                        <div class="price">${formatCurrency(product.price)}</div>
+                        <!-- Barcode will be appended here -->
+                        <div class="barcode-number">${product.barcode}</div>
+                    `;
+                    // Append the generated SVG to the label div
+                    labelDiv.insertBefore(svgElement, labelDiv.querySelector('.barcode-number')); // Insert before the barcode number text
+
+                    barcodeLabelsContainer.appendChild(labelDiv);
+                });
+
+                barcodePrintArea.classList.remove('hidden');
+                showMessage('Etiquetas de código de barras geradas. Você pode imprimi-las agora.', 'success');
+            } catch (error) {
+                showMessage('Erro ao gerar etiquetas de código de barras.', 'error');
+                console.error('Relatórios: Erro ao gerar etiquetas de código de barras:', error);
+            }
+        });
+
+        printBarcodeLabelsBtn.addEventListener('click', () => {
+            console.log('Relatórios: Imprimindo etiquetas de código de barras...');
+            window.print();
+        });
+
+        closeBarcodeLabelsBtn.addEventListener('click', () => {
+            console.log('Relatórios: Fechando visualização de etiquetas...');
+            barcodePrintArea.classList.add('hidden');
+            barcodeLabelsContainer.innerHTML = '';
+        });
+
+
+        // Exportar todos os dados do sistema
+        document.getElementById('exportSystemBackup').addEventListener('click', async () => {
+            console.log('Backup: Iniciando exportação de backup do sistema...');
+            try {
+                const allData = {
+                    products: await getAllItems('products'),
+                    sales: await getAllItems('sales'),
+                    receipts: await await getAllItems('receipts'),
+                    purchases: await getAllItems('purchases')
+                };
+                const jsonString = JSON.stringify(allData, null, 2); // Formata com 2 espaços para leitura
+                downloadFile(jsonString, 'supermarket_backup.json', 'application/json');
+                showMessage('Backup do sistema exportado com sucesso!', 'success');
+                console.log('Backup: Exportação de backup concluída.');
+            } catch (error) {
+                showMessage('Erro ao exportar backup do sistema.', 'error');
+                console.error('Backup: Erro na exportação de backup:', error);
+            }
+        });
+
+        // Importar todos os dados do sistema
+        const importSystemFileInput = document.getElementById('importSystemFileInput');
+        document.getElementById('importSystemBackup').addEventListener('click', () => {
+            console.log('Backup: Botão "Importar Backup" clicado. Abrindo seletor de arquivos...');
+            importSystemFileInput.click(); // Dispara o clique no input de arquivo oculto
+        });
+
+        importSystemFileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                console.log('Backup: Nenhum arquivo selecionado para importação.');
+                showMessage('Nenhum arquivo de backup selecionado.', 'info');
+                return;
+            }
+
+            console.log('Backup: Arquivo selecionado para importação:', file.name);
+            const confirmed = await showCustomConfirm(
+                `Tem certeza que deseja importar o backup "${file.name}"? Isso APAGARÁ todos os dados atuais e os substituirá.`,
+                'Confirmar Importação de Backup'
+            );
+
+            if (!confirmed) {
+                console.log('Backup: Importação de backup cancelada pelo usuário.');
+                importSystemFileInput.value = ''; // Limpa o input para permitir nova seleção do mesmo arquivo
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const jsonContent = JSON.parse(e.target.result);
+                    console.log('Backup: Conteúdo do arquivo JSON lido e parseado.');
+
+                    // Verifica se o JSON tem a estrutura esperada
+                    const expectedStores = ['products', 'sales', 'receipts', 'purchases'];
+                    const hasAllStores = expectedStores.every(store => Array.isArray(jsonContent[store]));
+                    if (!hasAllStores) {
+                        showMessage('Estrutura do arquivo de backup inválida. Verifique se contém todos os dados esperados (products, sales, receipts, purchases).', 'error');
+                        console.error('Backup: Estrutura de backup inválida:', jsonContent);
+                        return;
+                    }
+
+                    // Limpa todos os object stores antes de importar
+                    console.log('Backup: Limpando object stores existentes...');
+                    await Promise.all(expectedStores.map(storeName => clearStore(storeName)));
+                    console.log('Backup: Object stores limpos. Iniciando importação...');
+
+                    // Adiciona os dados importados a cada object store
+                    // Usamos Promise.all para processar as lojas em paralelo, mas cada item dentro de uma loja é sequencial
+                    for (const storeName of expectedStores) {
+                        const itemsToImport = jsonContent[storeName];
+                        if (itemsToImport && itemsToImport.length > 0) {
+                            console.log(`Backup: Importando ${itemsToImport.length} itens para "${storeName}"...`);
+                            // Para garantir que autoIncrement funcione corretamente e evitar conflitos
+                            // é melhor adicionar itens um por um, ou usar put se IDs forem mantidos.
+                            // Para este caso, vamos adicionar, o que gerará novos IDs.
+                            for (const item of itemsToImport) {
+                                // Remove o ID existente para que IndexedDB atribua um novo (autoIncrement)
+                                // Isso é crucial para evitar ConstraintError em chaves primárias se o backup tiver IDs que já existem
+                                const { id, ...itemWithoutId } = item;
+                                await addItem(storeName, itemWithoutId);
+                            }
+                            console.log(`Backup: Importação de "${storeName}" concluída.`);
+                        } else {
+                            console.log(`Backup: Nenhum item para importar para "${storeName}".`);
+                        }
+                    }
+
+                    showMessage('Backup importado com sucesso! Recarregando dados...', 'success');
+                    console.log('Backup: Importação de backup concluída com sucesso. Recarregando dados da UI.');
+                    // Recarrega todos os dados na UI após a importação
+                    // Chame as funções de carregamento para as abas relevantes
+                    // A aba 'cadastro-produtos' é a ativa por padrão, então não precisa de loadProducts() aqui
+                    // loadProducts() será chamada no listener da aba 'inventario-produtos' quando ela for ativada
+                    await updateAvailableProducts();
+                    await loadReceipts();
+                    await loadPurchases();
+                    await loadPendingPurchases();
+                    renderCart(); // Limpa e renderiza o carrinho vazio
+                    renderPurchaseItems(); // Limpa e renderiza os itens de compra vazios
+
+                    // Força a atualização da aba ativa (Cadastro de Produtos) e Inventário (se for para ela)
+                    // Se a aba ativa for 'cadastro-produtos', limpa o formulário
+                    if (document.getElementById('cadastro-produtos').classList.contains('active')) {
+                        productForm.reset();
+                        productIdInput.value = '';
+                        suggestBarcodeForNewProduct(); // Sugere um novo código ao recarregar a aba
+                    }
+                    // Se a aba ativa for 'inventario-produtos', recarrega os produtos
+                    if (document.getElementById('inventario-produtos').classList.contains('active')) {
+                        loadProducts(); // Recarrega o inventário
+                    }
+
+
+                } catch (error) {
+                    showMessage('Erro ao importar backup. Verifique o formato do arquivo.', 'error');
+                    console.error('Backup: Erro durante a importação do backup:', error);
+                } finally {
+                    importSystemFileInput.value = ''; // Limpa o input de arquivo
+                }
+            };
+            reader.readAsText(file);
+        });
+
+
+        // --- Lógica de Navegação entre Módulos ---
+
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const contentSections = document.querySelectorAll('.content-section');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', (event) => {
+                const targetTab = button.dataset.tab;
+                console.log('Navegação: Clicado na aba:', targetTab);
+
+                // Remove 'active' de todos os botões e seções
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                contentSections.forEach(section => {
+                    section.classList.remove('active');
+                });
+
+                // Adiciona 'active' ao botão clicado e à seção correspondente
+                button.classList.add('active');
+                const targetSection = document.getElementById(targetTab);
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                } else {
+                    console.error(`Navegação: Seção com ID "${targetTab}" não encontrada.`);
+                }
+
+                // Recarrega dados específicos para a aba ativa
+                if (targetTab === 'cadastro-produtos') {
+                    // Se estiver em modo de adicionar novo produto (productIdInput vazio), sugere um código de barras
+                    if (!productIdInput.value) {
+                        suggestBarcodeForNewProduct();
+                    }
+                } else if (targetTab === 'controle-estoque') {
+                    loadStockControl(); // Carrega dados para a nova aba de controle de estoque
+                }
+                else if (targetTab === 'inventario-produtos') {
+                    loadProducts(); // Recarrega a lista de produtos para o inventário
+                } else if (targetTab === 'caixa') {
+                    updateAvailableProducts();
+                    renderCart();
+                } else if (targetTab === 'recebimentos') {
+                    updateAvailableProducts();
+                    loadApprovedPurchaseOrders(); // Carrega pedidos aprovados para o dropdown
+                    loadReceipts();
+                } else if (targetTab === 'compras') {
+                    updateAvailableProducts();
+                    loadPurchases();
+                    renderPurchaseItems();
+                } else if (targetTab === 'aprovacoes') {
+                    loadPendingPurchases();
+                } else if (targetTab === 'relatorios') {
+                    // Relatórios são gerados sob demanda, não precisam de carga inicial aqui
+                    // Oculta a seção de resultados da contagem cega ao entrar na aba de relatórios
+                    blindCountReportResultsDiv.classList.add('hidden');
+                    exportBlindCountCSVBtn.classList.add('hidden');
+                    barcodePrintArea.classList.add('hidden'); // Oculta a área de impressão de código de barras
+                }
+            });
+        });
+
+        // --- Inicialização da Aplicação ---
+
+        window.onload = async () => {
+            console.log('Inicialização: Iniciando aplicação...');
+            try {
+                await openDatabase();
+                // Ativa a primeira aba por padrão (Cadastro de Produtos)
+                document.querySelector('[data-tab="cadastro-produtos"]').click();
+                // Carrega dados iniciais para módulos que podem ser acessados diretamente ou que precisam de cache
+                await updateAvailableProducts(); // Para pesquisa em Caixa, Recebimentos, Compras
+                await loadReceipts();
+                await loadPurchases();
+                await loadPendingPurchases();
+                renderCart(); // Renderiza o carrinho vazio inicialmente
+                renderPurchaseItems(); // Renderiza os itens de compra vazios inicialmente
+                showMessage('Sistema carregado com sucesso!', 'success');
+                console.log('Inicialização: Aplicação carregada com sucesso.');
+            } catch (error) {
+                showMessage('Falha ao iniciar o sistema. Verifique o console.', 'error');
+                console.error('Inicialização: Erro na inicialização:', error);
+            }
+        };
+    </script>
+</body>
+</html>
